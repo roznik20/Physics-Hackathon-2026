@@ -47,6 +47,16 @@ for _ in range(num_small):
         "rot": random.uniform(0, 360),
         "rot_speed": random.uniform(0.5, 1.2) * random.choice([-1, 1])
     })
+num_glitters = 50
+glitters = [
+    {
+        "x": random.randint(0, WIDTH),
+        "y": random.randint(0, HEIGHT),
+        "size": random.randint(1, 3),
+        "speed": random.uniform(1, 3)
+    }
+    for _ in range(num_glitters)
+]
 
 # Hoop placeholder (transparent)
 hoop_width, hoop_height = 100, 50
@@ -66,6 +76,19 @@ while running:
             running = False
 
     screen.fill(pink_bg)
+    for glitter in glitters:
+        glitter["y"] += glitter["speed"]
+        if glitter["y"] > HEIGHT:
+            glitter["y"] = 0
+            glitter["x"] = random.randint(0, WIDTH)
+
+    # Flicker effect: change alpha randomly
+        alpha = random.randint(100, 255)
+        color = (255, 255, 255, alpha)  # white glitter
+        s = pygame.Surface((glitter["size"], glitter["size"]), pygame.SRCALPHA)
+        pygame.draw.circle(
+            s, color, (glitter["size"]//2, glitter["size"]//2), glitter["size"]//2)
+        screen.blit(s, (glitter["x"], glitter["y"]))
 
     # Move and draw big bows with rotation
     for bow in big_bows:
@@ -117,5 +140,6 @@ while running:
 
     pygame.display.update()
     clock.tick(60)
+
 
 pygame.quit()
