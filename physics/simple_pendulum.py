@@ -7,15 +7,20 @@ import matplotlib.pyplot as plt
 
 def simulate_pendulum(L_val=0.5, g_val=9.81, theta0=1, omega0=5, t_max=10.0, fps=60):
     def f(_t, y):
-        th, om = y
-        return [om, -(g_val / L_val) * math.sin(th)]
+        theta, omega = y
+        return [omega, -(g_val / L_val) * math.sin(theta)]
 
     t_eval = np.linspace(0.0, t_max, int(t_max * fps))
     sol = solve_ivp(f, (0.0, t_max), [theta0, omega0], t_eval=t_eval)
-    th = sol.y[0]
-    x = L_val * np.sin(th)
-    y = -L_val * np.cos(th)
+    theta = sol.y[0]
+    x = L_val * np.sin(theta)
+    y = -L_val * np.cos(theta)
     return t_eval, x, y
+
+
+
+
+
 
 '''
 
@@ -24,30 +29,30 @@ def simulate_mid_bearing_pendulum(L=1.0, m1=2.0, m2=6.0, g=9.81, theta1_0=1, ome
     L2 = L / 2.0
 
     def f(_t, y):
-        th1, om1, th2, om2 = y
-        delta = th1 - th2
+        theta1, omega1, theta2, omega2 = y
+        delta = theta1 - theta2
         den1 = L1 * (2 * m1 + m2 - m2 * math.cos(2 * delta))
         den2 = L2 * (2 * m1 + m2 - m2 * math.cos(2 * delta))
 
         domega1 = (
-            -g * (2 * m1 + m2) * math.sin(th1)
-            - m2 * g * math.sin(th1 - 2 * th2)
-            - 2 * math.sin(delta) * m2 * (om2**2 * L2 + om1**2 * L1 * math.cos(delta))
+            -g * (2 * m1 + m2) * math.sin(theta1)
+            - m2 * g * math.sin(theta1 - 2 * theta2)
+            - 2 * math.sin(delta) * m2 * (omega2**2 * L2 + omega1**2 * L1 * math.cos(delta))
         ) / den1
 
         domega2 = (
             2 * math.sin(delta)
-            * (om1**2 * L1 * (m1 + m2) + g * (m1 + m2) * math.cos(th1) + om2**2 * L2 * m2 * math.cos(delta))
+            * (omega1**2 * L1 * (m1 + m2) + g * (m1 + m2) * math.cos(theta1) + omega2**2 * L2 * m2 * math.cos(delta))
         ) / den2
 
-        return [om1, domega1, om2, domega2]
+        return [omega1, domega1, omega2, domega2]
 
     t_eval = np.linspace(0.0, t_max, int(t_max * fps))
     sol = solve_ivp(f, (0.0, t_max), [theta1_0, omega1_0, theta2_0, omega2_0], t_eval=t_eval)
 
-    th1, th2 = sol.y[0], sol.y[2]
-    x1, y1 = L1 * np.sin(th1), -L1 * np.cos(th1)
-    x2, y2 = x1 + L2 * np.sin(th2), y1 - L2 * np.cos(th2)
+    theta1, theta2 = sol.y[0], sol.y[2]
+    x1, y1 = L1 * np.sin(theta1), -L1 * np.cos(theta1)
+    x2, y2 = x1 + L2 * np.sin(theta2), y1 - L2 * np.cos(theta2)
     return t_eval, x1, y1, x2, y2
 
 t_eval2, x1, y1, x2, y2 = simulate_mid_bearing_pendulum()
