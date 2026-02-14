@@ -17,21 +17,6 @@ def simulate_pendulum(L_val=0.5, g_val=9.81, theta0=1, omega0=5, t_max=10.0, fps
     y = -L_val * np.cos(th)
     return t_eval, x, y
 
-t_eval, x, y = simulate_pendulum()
-
-fig, ax = plt.subplots()
-ax.set_aspect('equal', adjustable='box')
-ax.set_xlim(-1.2, 1.2)
-ax.set_ylim(-1.2, 0.2)
-line, = ax.plot([], [], 'o-', lw=2)
-
-def update(i):
-    line.set_data([0, x[i]], [0, y[i]])
-    return line,
-
-ani = FuncAnimation(fig, update, frames=len(t_eval), interval=1000/60, blit=True)
-#plt.show()
-
 '''
 
 def simulate_mid_bearing_pendulum(L=1.0, m1=2.0, m2=6.0, g=9.81, theta1_0=1, omega1_0=2, theta2_0=1, omega2_0=3, t_max=100, fps=60):
