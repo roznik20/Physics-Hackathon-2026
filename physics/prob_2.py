@@ -17,7 +17,7 @@ EL = sp.simplify(sp.diff(sp.diff(Lagrangian, sp.diff(theta, t)), t) - sp.diff(La
 # print(EL)  # uncomment if you want to see it
 
 # --- Numerical solution and coordinates ---
-def pendulum_xy(time_t, L_val=1.0, g_val=9.81, theta0=0.2, omega0=0.0):
+def pendulum_xy(time_t, L_val=0.5, g_val=9.81, theta0=1, omega0=0.0):
     def f(_t, y):
         th, om = y
         return [om, -(g_val / L_val) * math.sin(th)]
@@ -33,7 +33,7 @@ for t in [0.000000001, 0.5, 1.0, 1.5, 2.0]:
 
 import matplotlib.pyplot as plt
 
-def simulate_pendulum(L_val=1.0, g_val=9.81, theta0=0.2, omega0=0.0, t_max=10.0, fps=60):
+def simulate_pendulum(L_val=0.5, g_val=9.81, theta0=1, omega0=0.0, t_max=10.0, fps=60):
     def f(_t, y):
         th, om = y
         return [om, -(g_val / L_val) * math.sin(th)]
