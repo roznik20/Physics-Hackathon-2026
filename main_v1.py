@@ -113,7 +113,7 @@ def main():
 
     # --- parameters (later connect to sliders) ---
     g = 9.81
-    L = 1.35
+    L = 0.5
     A = 0.9
     wind_ax = 0.0
 
