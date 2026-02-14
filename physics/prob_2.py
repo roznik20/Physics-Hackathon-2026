@@ -1,6 +1,8 @@
 import math
 import sympy as sp
 from scipy.integrate import solve_ivp
+import numpy as np
+from matplotlib.animation import FuncAnimation
 
 # --- Symbolic Lagrangian and EOM ---
 t = sp.symbols('t')
@@ -29,10 +31,31 @@ def pendulum_xy(time_t, L_val=1.0, g_val=9.81, theta0=0.2, omega0=0.0):
 for t in [0.000000001, 0.5, 1.0, 1.5, 2.0]:
     print(pendulum_xy(t))
 
-    array = [
-        (0.19866933079506122, -0.9800665778412416),
-        (0.0017213706709042669, -0.9999985184404092),
-        (-0.1986237848960794, -0.9800758093502543),
-        (-0.004958700978791691, -0.9999877055667249),
-        (0.19853028380407317, -0.9800947537930575),
-    ]
+import matplotlib.pyplot as plt
+
+def simulate_pendulum(L_val=1.0, g_val=9.81, theta0=0.2, omega0=0.0, t_max=10.0, fps=60):
+    def f(_t, y):
+        th, om = y
+        return [om, -(g_val / L_val) * math.sin(th)]
+
+    t_eval = np.linspace(0.0, t_max, int(t_max * fps))
+    sol = solve_ivp(f, (0.0, t_max), [theta0, omega0], t_eval=t_eval)
+    th = sol.y[0]
+    x = L_val * np.sin(th)
+    y = -L_val * np.cos(th)
+    return t_eval, x, y
+
+t_eval, x, y = simulate_pendulum()
+
+fig, ax = plt.subplots()
+ax.set_aspect('equal', adjustable='box')
+ax.set_xlim(-1.2, 1.2)
+ax.set_ylim(-1.2, 0.2)
+line, = ax.plot([], [], 'o-', lw=2)
+
+def update(i):
+    line.set_data([0, x[i]], [0, y[i]])
+    return line,
+
+ani = FuncAnimation(fig, update, frames=len(t_eval), interval=1000/60, blit=True)
+plt.show()
