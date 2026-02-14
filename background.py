@@ -10,8 +10,13 @@ WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Parallax Bow Background with Random Rotation")
 
-# Pink background
 pink_bg = (255, 207, 249)
+
+background = pygame.image.load("assets/background.png").convert_alpha()
+background = pygame.transform.scale(background, (WIDTH, HEIGHT))
+background.set_alpha(190)  # 0 = fully transparent, 255 = fully opaque
+
+# Pink background
 
 # Load bow image
 bow_image = pygame.image.load("assets/bow2.png").convert_alpha()
@@ -74,8 +79,9 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
     screen.fill(pink_bg)
+    screen.blit(background, (0, 0))
+
     for glitter in glitters:
         glitter["y"] += glitter["speed"]
         if glitter["y"] > HEIGHT:
