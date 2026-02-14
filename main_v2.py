@@ -180,8 +180,8 @@ def main():
     hoop = Hoop(center_m=(3.8, 2.15), radius_m=0.20)
 
     #images for score / miss
-    green_fn = pygame.image.load("C:/Users/marti/Physics-Hackathon-2026/green_fn.png").convert_alpha()
-    curry_moonshot = pygame.image.load("C:/Users/marti/Physics-Hackathon-2026/curry_moonshot.png").convert_alpha()
+    green_fn = pygame.image.load("green_fn.png").convert_alpha()
+    curry_moonshot = pygame.image.load("curry_moonshot.png").convert_alpha()
     global im_green, im_moonshot, flash_start_time, flash_duration
 
     score = 0
