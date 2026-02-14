@@ -6,17 +6,22 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 
 def simulate_pendulum(L_val=0.5, g_val=9.81, theta0=1, omega0=5, t_max=10.0, fps=60):
-    def f(_t, y):
-        theta, omega = y
-        return [omega, -(g_val / L_val) * math.sin(theta)]
+    def f(t, y):
+        #theta, omega = y
+        theta = y[0]
+        omega = y[1]
+        dt_theta = omega
+        dt_omega = -(g_val / L_val) * math.sin(theta)
+        
+        return [dt_theta, dt_omega]
 
     t_eval = np.linspace(0.0, t_max, int(t_max * fps))
     sol = solve_ivp(f, (0.0, t_max), [theta0, omega0], t_eval=t_eval)
+    
     theta = sol.y[0]
     x = L_val * np.sin(theta)
     y = -L_val * np.cos(theta)
     return t_eval, x, y
-
 
 
 
@@ -58,7 +63,7 @@ def simulate_mid_bearing_pendulum(L=1.0, m1=2.0, m2=6.0, g=9.81, theta1_0=1, ome
 t_eval2, x1, y1, x2, y2 = simulate_mid_bearing_pendulum()
 
 fig2, ax2 = plt.subplots()
-ax2.set_aspect('equal', adjustable='box')
+ax2.set_aspect('equal', adjus   table='box')
 ax2.set_xlim(-1.2, 1.2)
 ax2.set_ylim(-1.2, 0.2)
 line1, = ax2.plot([], [], 'o-', lw=2, color='tab:blue')
