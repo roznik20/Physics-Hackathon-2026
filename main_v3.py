@@ -103,8 +103,8 @@ class Menu:
 
     def __init__(self):
         
-        self.screen_width = 800
-        self.screen_height = 600
+        self.screen_width = 1000
+        self.screen_height = 650
 
         # Button setup
         self.button_width = 200
@@ -118,11 +118,27 @@ class Menu:
         )
 
         self.font = pygame.font.SysFont(None, 48)
+        self.title_font = pygame.font.SysFont(None, 100)
+        self.title_color = (10,10,10)
 
         self.bg_color = (30, 30, 30)
-        self.button_color = (50, 150, 50)
-        self.button_hover_color = (100, 200, 100)
+        self.button_color = (255, 153, 204)
+        self.button_hover_color = (218, 112, 214)
         self.text_color = (255, 255, 255)
+
+        #bg images
+        self.bliss = pygame.image.load("assets/bliss.jpg")
+        self.lebron = pygame.image.load("assets/lebron.png")
+
+        self.bliss_scaled, self.bliss_pos = self.scale_and_center_image(self.bliss)
+        self.lebron_scaled, self.lebron_pos = self.scale_and_center_image(self.lebron)
+
+        # render the text
+        self.title_surf = self.title_font.render("LeHoop and Ball Game", True, self.title_color)
+
+        # get centered position
+        self.title_rect = self.title_surf.get_rect(center=(self.screen_width // 2, 80))  # y=80 pixels from top
+
 
     def handle_events(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -135,7 +151,33 @@ class Menu:
     def update(self, dt):
         pass
 
+    def scale_and_center_image(self, image):
+        # get original size
+        img_w, img_h = image.get_size()
+    
+        # compute scale factors
+        scale_w = self.screen_width / img_w
+        scale_h = self.screen_height / img_h
+        scale = max(scale_w, scale_h)  # ensures no empty space
+
+        # compute new size and scale image
+        new_w = int(img_w * scale)
+        new_h = int(img_h * scale)
+        image = pygame.transform.scale(image, (new_w, new_h))
+
+        # compute centered position
+        x = (self.screen_width - new_w) // 2
+        y = (self.screen_height - new_h) // 2
+
+        return image, (x, y)
+    
+
+
+
     def draw(self, screen):
+        screen.blit(self.bliss_scaled, self.bliss_pos)
+        screen.blit(self.lebron_scaled, self.lebron_pos)
+        screen.blit(self.title_surf, self.title_rect)
 
         # Hover color
         mouse_pos = pygame.mouse.get_pos()
@@ -283,6 +325,8 @@ class Game:
                     self.trail.clear()
             if event.key == pygame.K_ESCAPE:
                 return Menu()
+            if event.key == pygame.K_s:
+                self.level += 1
         return self
     
     def update(self, frame_dt):
@@ -308,8 +352,6 @@ class Game:
                     # difficulty ramp: wind after level 2
                     if self.level < 3:
                         self.wind_ax = 0.0
-                    else:
-                        self.wind_ax = (0.55 * (self.level - 2)) * (1 if (self.level % 2 == 0) else -1)
 
                     self.pend.t = 0.0
                     self.ball.attach_to(self.pend)
@@ -370,10 +412,9 @@ class Game:
 
         # HUD
         self.draw_text(screen, self.font, f"L={self.pend.L:.2f} m   A={self.pend.A:.2f} rad   g={self.g:.2f}", 20, 18)
-        self.draw_text(screen, self.font, f"wind_ax={self.wind_ax:.2f} m/s^2", 20, 40)
-        self.draw_text(screen, self.font, "SPACE=release   R=reset", 20, 62)
+        self.draw_text(screen, self.font, "SPACE=release   R=reset  S=skip level", 20, 62)
         self.draw_text(screen, self.font, f"x position ball: {self.ball.pos[0]:.2f} m", 20, 84)
-        self.draw_text(screen, self.font, f"y position ball: {self.ball.pos[1]:.2f} m", 20, 106)  
+        self.draw_text(screen, self.font, f"y position ball: {self.ball.pos[1]:.2f} m", 20, 106) 
 
         title = self.bigfont.render(f"Score: {self.score}   Level: {self.level}", True, (30, 30, 30))
         screen.blit(title, (self.W - title.get_width() - 20, 16))
