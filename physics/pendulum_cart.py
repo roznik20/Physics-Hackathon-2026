@@ -22,18 +22,14 @@ def simulate_pendulum(m1 =1 , m2 = 1, g=9.81, r=1, theta = 1.0, omega = 0.0, x =
     t_eval = np.linspace(0, t_max, int(t_max * fps))
     sol = scipy.integrate.solve_ivp(f, (0, t_max), y0, t_eval=t_eval)
 
-    # Extract solution
     theta = sol.y[0]
     x_cart = sol.y[2]
-    y_cart = np.zeros_like(x_cart)  # Cart moves along x-axis, y is constant
+    y_cart = np.zeros_like(x_cart) 
 
-    # Pendulum position
     x_pend = x_cart + r * np.sin(theta) 
     y_pend = -r * np.cos(theta)
     return t_eval, x_pend, y_pend, x_cart, y_cart
 
-
-# --- Animation ---
 t, x_pend, y_pend, x_cart, y_cart = simulate_pendulum()
 
 fig, ax = plt.subplots()

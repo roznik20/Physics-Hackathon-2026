@@ -4,7 +4,7 @@ from scipy.integrate import solve_ivp
 from matplotlib.animation import FuncAnimation
 
 
-def simulate_spring_pendulum(
+def simulate_pendulum(
     m=1.0, k=20.0, L0=1.0, g=9.81,
     r0=1.1, theta0=1, rdot0=1, thetadot0=2.0,
     t_max=600, fps=60):
@@ -43,7 +43,7 @@ def simulate_spring_pendulum(
 
 import matplotlib.pyplot as plt
 
-t_eval, x, y = simulate_spring_pendulum()
+t_eval, x, y = simulate_pendulum()
 
 fig, ax = plt.subplots()
 ax.set_aspect("equal", adjustable="box")

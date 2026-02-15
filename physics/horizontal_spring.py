@@ -6,7 +6,7 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 from sympy import fps
 
-def simulate_pendelum(L_extention = 0.5, m= 2, k=6, t_max=600, fps=60):
+def simulate_pendulum(L_extention = 0.5, m= 2, k=6, t_max=600, fps=60):
     def f(t, y):
         x = y[0]
         v = y[1]
@@ -21,7 +21,7 @@ def simulate_pendelum(L_extention = 0.5, m= 2, k=6, t_max=600, fps=60):
     return t_eval, x, x_wall
 
 #put a wall on x coordiant 1, or shift it as buch as u want it to the right
-t, x, x_wall = simulate_pendelum()
+t, x, x_wall = simulate_pendulum()
 
 fig, ax = plt.subplots()
 ax.set_xlim(-1.2 * np.max(np.abs(x)), 1.2)
