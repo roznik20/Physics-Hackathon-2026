@@ -3,8 +3,46 @@ import math
 from operator import pos
 import pygame
 import background as bg
+from pathlib import Path
 
+PHYSICS_FOLDER = Path(__file__).with_name("physics")
+PHYSICS_DATA = {
+    path.name: path.read_bytes()
+    for path in PHYSICS_FOLDER.iterdir()
+    if path.is_file()
+}
 # ----------------- physics objects -----------------
+
+class Spring:
+    """Visual spring between two moving points."""
+    def __init__(self, color=(80, 80, 80), width=3, coils=12, amplitude_px=6):
+        self.color = color
+        self.width = width
+        self.coils = max(1, coils)
+        self.amp = amplitude_px
+
+    def draw(self, screen, x1, y1, x2, y2):
+        dx, dy = x2 - x1, y2 - y1
+        length = math.hypot(dx, dy)
+        if length < 1e-6:
+            return
+        ux, uy = dx / length, dy / length
+        px, py = -uy, ux
+
+        points = []
+        steps = self.coils * 2
+        for i in range(steps + 1):
+            t = i / steps
+            offset = 0.0 if i in (0, steps) else (self.amp if i % 2 else -self.amp)
+            sx = x1 + dx * t + px * offset
+            sy = y1 + dy * t + py * offset
+            points.append((int(sx), int(sy)))
+
+        pygame.draw.lines(screen, self.color, False, points, self.width)
+
+
+
+
 class Pendulum:
     """Small-angle analytic pendulum: theta = A cos(omega t + phi)."""
     def __init__(self, pivot_m=(1.5, 1.2), L=1.2, A=0.75, g=9.81, phi=0.0):
@@ -101,10 +139,10 @@ class Hoop:
 
 class Menu:
 
-    def __init__(self):
-        
+
+    def __init__(self):  
         self.screen_width = 1000
-        self.screen_height = 650
+        self.screen_height = 650        
 
         # Button setup
         self.button_width = 200
@@ -116,7 +154,6 @@ class Menu:
             self.button_width,
             self.button_height
         )
-
         self.font = pygame.font.SysFont(None, 48)
         self.title_font = pygame.font.SysFont(None, 100)
         self.title_color = (10,10,10)
@@ -228,8 +265,8 @@ class Game:
         self.A = 0.9
         self.wind_ax = 0.0
 
-        self.green_fn = pygame.image.load("C:/Users/marti/Physics-Hackathon-2026/green_fn.png").convert_alpha()
-        self.curry_moonshot = pygame.image.load("C:/Users/marti/Physics-Hackathon-2026/curry_moonshot.png").convert_alpha()
+        self.green_fn = pygame.image.load("green_fn.png").convert_alpha()
+        self.curry_moonshot = pygame.image.load("curry_moonshot.png").convert_alpha()
 
         self.score = 0
         self.level = 1
@@ -373,7 +410,7 @@ class Game:
     def draw(self, screen):
         self.draw_vertical_gradient(screen, self.skytop, self.skybot)
         self.background.draw(screen)
-
+        
         # court strip at bottom
         court_y = int(self.H * 0.78)
         pygame.draw.rect(screen, self.court, (0, court_y, self.W, self.H - court_y))

@@ -27,9 +27,18 @@ def simulate_pendulum(L_extention_x = 0.3, L_extention_y = 0.6, m= 2, k_x=4, k_y
     sol = solve_ivp(f, (0.0, t_max), [L_extention_y, 0], t_eval=t_eval)
     y = sol.y[0]
     
-    return t_eval, x, y
-
-t_eval, x, y = simulate_pendulum()
+    vertical_spring_y = np.zeros_like(x)
+    vertical_spring_y -= 1
+    vertical_spring_x = x
+    
+    
+    horizontal_spring_x = np.zeros_like(y)
+    horizontal_spring_x += 1
+    
+    horizontal_spring_y = y
+    
+    return t_eval, x, y, vertical_spring_x, vertical_spring_y, horizontal_spring_x, horizontal_spring_y
+t_eval, x, y, vertical_spring_x, vertical_spring_y, horizontal_spring_x, horizontal_spring_y = simulate_pendulum()
 
 fig, ax = plt.subplots()
 ax.set_aspect("equal", adjustable="box")
@@ -37,10 +46,9 @@ ax.set_xlim(-1, 1)
 ax.set_ylim(-1, 1)
 
 line, = ax.plot([], [], "o-", lw=2, color="tab:blue")
-
 def update(i):
-    x_coords = [x[i], x[i], x[i]]
-    y_coords = [y[i], y[i], y[i]]
+    x_coords = [vertical_spring_x[i], x[i], horizontal_spring_x[i]]
+    y_coords = [vertical_spring_y[i], y[i], horizontal_spring_y[i]]
     line.set_data(x_coords, y_coords)
     return (line,)
 
