@@ -39,11 +39,11 @@ def simulate_spring_pendulum(
     x = r * np.sin(theta)
     y = -r * np.cos(theta)
 
-    return t_eval, r, theta, x, y
+    return t_eval, x, y
 
 import matplotlib.pyplot as plt
 
-t_eval, _, _, x, y = simulate_spring_pendulum()
+t_eval, x, y = simulate_spring_pendulum()
 
 fig, ax = plt.subplots()
 ax.set_aspect("equal", adjustable="box")
