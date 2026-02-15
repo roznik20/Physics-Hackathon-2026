@@ -186,8 +186,8 @@ class Game:
         self.A = 0.9
         self.wind_ax = 0.0
 
-        self.green_fn = pygame.image.load("C:/Users/marti/Physics-Hackathon-2026/green_fn.png").convert_alpha()
-        self.curry_moonshot = pygame.image.load("C:/Users/marti/Physics-Hackathon-2026/curry_moonshot.png").convert_alpha()
+        self.green_fn = pygame.image.load("green_fn.png").convert_alpha()
+        self.curry_moonshot = pygame.image.load("curry_moonshot.png").convert_alpha()
 
         self.score = 0
         self.level = 1
