@@ -5,7 +5,7 @@ from matplotlib.animation import FuncAnimation
 def simulate_vertical_2mass(
     m1=1.0, m2=1.3,
     k1=15.0, k2=20.0, k3=20.0,
-    L1=1.5, L2=1.5, L3=1.5,
+    L1=2.3, L2=1.7, L3=1,
     g=9.81,
     x10=1, x20=3,
     v10=2.0, v20=-2.3,
@@ -33,10 +33,11 @@ def simulate_vertical_2mass(
     sol = solve_ivp(f, (0, t_max), y0, t_eval=t_eval)
     x1 = sol.y[0]
     x2 = sol.y[1]
+    
     return t_eval, x1, x2, total_length
 import matplotlib.pyplot as plt
 
-
+#floor at 0, cealing at 4.5
 
 t_eval, x1, x2, total_length = simulate_vertical_2mass()
 

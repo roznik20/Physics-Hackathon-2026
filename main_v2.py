@@ -127,8 +127,8 @@ class Ball:
     def step(self, dt, g=9.81, wind_ax=0.0):
         if self.attached:
             return
-        ax, ay = wind_ax, g  # y-down gravity is +g
-        self.vel = (self.vel[0] + ax * dt, self.vel[1] + ay * dt)
+        ay = g  # y-down gravity is +g
+        self.vel = (self.vel[0], self.vel[1] + ay * dt)
         self.pos = (self.pos[0] + self.vel[0] * dt, self.pos[1] + self.vel[1] * dt)
 
 class Hoop:
@@ -174,7 +174,6 @@ def main():
     g = 9.81
     L = 1.35
     A = 0.9
-    wind_ax = 0.0
 
     pend = Pendulum(pivot_m=(1.2, -1.0), L=L, A=A, g=g, phi=0.3)
     ball = Ball(radius_m=0.12)
@@ -213,14 +212,14 @@ def main():
         frame_dt = clock.tick(FPS) / 1000.0
         accumulator += frame_dt
 
-
+    
         while accumulator >= DT:
             pend.step(DT)
 
             if ball.attached:
                 ball.pos = pend.ball_pos()
             else:
-                ball.step(DT, g=g, wind_ax=wind_ax)
+                ball.step(DT, g=g)
 
                 # score check
                 if hoop.scored(ball):
@@ -230,11 +229,6 @@ def main():
                     im_green = True
                     flash_start_time = pygame.time.get_ticks()
 
-                    # difficulty ramp: wind after level 2
-                    if level < 3:
-                        wind_ax = 0.0
-                    else:
-                        wind_ax = (0.55 * (level - 2)) * (1 if (level % 2 == 0) else -1)
 
                     pend.t = 0.0
                     ball.attach_to(pend)
@@ -294,7 +288,6 @@ def main():
 
         # HUD
         draw_text(screen, font, f"L={pend.L:.2f} m   A={pend.A:.2f} rad   g={g:.2f}", 20, 18)
-        draw_text(screen, font, f"wind_ax={wind_ax:.2f} m/s^2", 20, 40)
         draw_text(screen, font, "SPACE=release   R=reset", 20, 62)
         draw_text(screen, font, f"x position ball: {ball.pos[0]:.2f} m", 20, 84)
         draw_text(screen, font, f"y position ball: {ball.pos[1]:.2f} m", 20, 106)  
