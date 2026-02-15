@@ -26,6 +26,7 @@ from dataclasses import dataclass
 
 import pygame
 import numpy as np
+import background as bg
 
 from vladbasketv1 import BasketAssembly
 from hoop_spawnv1 import HoopSprite
@@ -664,10 +665,46 @@ class Menu:
         )
 
         self.font = pygame.font.SysFont(None, 48)
+        self.title_font = pygame.font.SysFont(None, 100)
+        self.title_color = (10,10,10)
 
         self.bg_color = (30, 30, 30)
-        self.button_color = (50, 150, 50)
-        self.button_hover_color = (100, 200, 100)
+        self.button_color = (255, 153, 204)
+        self.button_hover_color = (218, 112, 214)
+        self.text_color = (255, 255, 255)
+
+        #bg images
+        self.bliss = pygame.image.load("assets/bliss.jpg")
+        self.lebron = pygame.image.load("assets/lebron.png")
+
+        self.bliss_scaled, self.bliss_pos = self.scale_and_center_image(self.bliss)
+        self.lebron_scaled, self.lebron_pos = self.scale_and_center_image(self.lebron)
+
+        # render the text
+        self.title_surf = self.title_font.render("LeHoop and Ball Game", True, self.title_color)
+
+        # get centered position
+        self.title_rect = self.title_surf.get_rect(center=(self.screen_width // 2, 80))  # y=80 pixels from top
+
+    def scale_and_center_image(self, image):
+        # get original size
+        img_w, img_h = image.get_size()
+    
+        # compute scale factors
+        scale_w = self.screen_width / img_w
+        scale_h = self.screen_height / img_h
+        scale = max(scale_w, scale_h)  # ensures no empty space
+
+        # compute new size and scale image
+        new_w = int(img_w * scale)
+        new_h = int(img_h * scale)
+        image = pygame.transform.scale(image, (new_w, new_h))
+
+        # compute centered position
+        x = (self.screen_width - new_w) // 2
+        y = (self.screen_height - new_h) // 2
+
+        return image, (x, y)
 
     def handle_events(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -679,7 +716,9 @@ class Menu:
         pass
 
     def draw(self, screen):
-        screen.fill(self.bg_color)
+        screen.blit(self.bliss_scaled, self.bliss_pos)
+        screen.blit(self.lebron_scaled, self.lebron_pos)
+        screen.blit(self.title_surf, self.title_rect)
 
         mouse_pos = pygame.mouse.get_pos()
         color = self.button_hover_color if self.button_rect.collidepoint(mouse_pos) else self.button_color
@@ -697,6 +736,7 @@ class Game:
         self.FPS = FPS
         self.DT = DT
         self.px_per_m = PX_PER_M
+
 
         # Colors
         self.white = (245, 245, 245)
@@ -730,6 +770,8 @@ class Game:
         # Trail
         self.trail = []
         self.TRAIL_MAX = 28
+
+        self.win = False
 
         # Timing
         self.accumulator = 0.0
@@ -782,6 +824,10 @@ class Game:
         # Calibration
         self.calibrating = False
         self.cal_top_left = None
+
+        #Background variables
+
+        self.background = bg.Background(self.W, self.H)
 
     # --- coordinate helpers ---
     def m2px(self, v):
@@ -848,6 +894,13 @@ class Game:
 
             if event.key == pygame.K_ESCAPE and (not self.calibrating):
                 return "MENU"
+        
+            if event.key == pygame.K_s and self.level<10:
+                self.score += 1
+                self.level += 1
+                self.flash_start_time = pygame.time.get_ticks()
+                # Switch hoop motion model for the NEW level, and reset ball + motion
+                self._apply_level_motion(self.level, reset_ball=True)
 
         if event.type == pygame.MOUSEBUTTONDOWN and self.calibrating and self.cal_top_left is not None:
             mx, my = event.pos
@@ -858,7 +911,7 @@ class Game:
                 save_anchor_to_json((int(ax), int(ay)))
                 print(f"RIM ANCHOR PICKED: rim_anchor_px=({ax}, {ay}) saved to {ANCHOR_JSON}")
                 self.calibrating = False
-
+        
         return "GAME"
 
     # --- update ---
@@ -877,6 +930,7 @@ class Game:
             return
 
         # Fixed-step physics at 60 FPS
+        self.background.update()
         self.accumulator += frame_dt
         while self.accumulator >= self.DT:
             self.pend.step(self.DT)
@@ -887,20 +941,18 @@ class Game:
                 self.ball.step(self.DT, g=self.g, wind_ax=self.wind_ax)
 
                 # score check (meters)
-                if self.hoop.scored(self.ball):
+                if self.hoop.scored(self.ball) and self.level<10:
                     self.score += 1
                     self.level += 1
                     self.im_green = True
                     self.flash_start_time = pygame.time.get_ticks()
 
-                    # difficulty ramp: wind after level 2
-                    if self.level < 3:
-                        self.wind_ax = 0.0
-                    else:
-                        self.wind_ax = (0.55 * (self.level - 2)) * (1 if (self.level % 2 == 0) else -1)
-
                     # Switch hoop motion model for the NEW level, and reset ball + motion
                     self._apply_level_motion(self.level, reset_ball=True)
+                
+                elif self.hoop.scored(self.ball) and self.level == 10:
+                    self.score += 1
+                    self.win = True
 
                 else:
                     # miss flash (soft)
@@ -923,6 +975,7 @@ class Game:
     # --- draw ---
     def draw(self, screen):
         draw_vertical_gradient(screen, self.W, self.H, self.skytop, self.skybot)
+        self.background.draw(screen)
 
         # court strip at bottom
         court_y = int(self.H * 0.78)
@@ -1004,6 +1057,7 @@ class Game:
             screen.blit(image_copy, (0, 0))
             if alpha <= 0:
                 self.im_moonshot = False
+
 
 
 # =============================================================================

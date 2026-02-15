@@ -209,8 +209,6 @@ class Menu:
         return image, (x, y)
     
 
-
-
     def draw(self, screen):
         screen.blit(self.bliss_scaled, self.bliss_pos)
         screen.blit(self.lebron_scaled, self.lebron_pos)
