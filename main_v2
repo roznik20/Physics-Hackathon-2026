@@ -23,12 +23,14 @@ COURT_LINE = (210, 190, 170)
 
 PX_PER_M = 220
 
-def m2px(v): return v * PX_PER_M
+def m2px(v): 
+    return v * PX_PER_M
 
 def world_to_screen(pos_m):
     return (int(m2px(pos_m[0])), int(m2px(pos_m[1])))
 
-def lerp(a, b, t): return a + (b - a) * t
+def lerp(a, b, t): 
+    return a + (b - a) * t
 
 def draw_vertical_gradient(screen, top_color, bottom_color):
     # simple gradient: draw horizontal lines
@@ -245,8 +247,6 @@ def main():
 
                 # out of bounds reset
                 if ball.pos[0] < -1 or ball.pos[0] > 6 or ball.pos[1] > 4:
-                    print(alpha)
-                    #plt.pause(1)
                     pend.t = 0.0
                     ball.attach_to(pend)
                     trail.clear()
