@@ -18,8 +18,10 @@ def simulate_pendelum(L_extention = 0.5, m= 2, k=6, t_max=10.0, fps=60):
     x = sol.y[0]
     return t_eval, x
 
+#put a wall on x coordiant 1, or shift it as buch as u want it to the right
 
-'''
+
+
 t, x = simulate_pendelum()
 
 fig, ax = plt.subplots()
@@ -38,4 +40,3 @@ def update(i):
 
 ani = FuncAnimation(fig, update, frames=len(t), init_func=init, blit=True, interval=1000 / 60)
 plt.show()
-'''

@@ -23,7 +23,7 @@ def simulate_pendulum(L_val=0.5, g_val=9.81, theta0=1, omega0=5, t_max=600, fps=
     y = -L_val * np.cos(theta)
     return t_eval, x, y
 
-'''
+
 t_eval, x, y = simulate_pendulum()
 
 fig, ax = plt.subplots()
@@ -41,9 +41,7 @@ ani = FuncAnimation(fig, update, frames=len(t_eval), interval=1000/60, blit=True
 plt.show()
 
 '''
-'''
-
-def simulate_mid_bearing_pendulum(L=1.0, m1=2.0, m2=6.0, g=9.81, theta1_0=1, omega1_0=2, theta2_0=1, omega2_0=3, t_max=100, fps=60):
+def simulate_mid_bearing_pendulum(L=1.0, m1=1.0, m2=1.0, g=9.81, theta1_0=1, omega1_0=-1.23, theta2_0=-1, omega2_0=1, t_max=600, fps=60):
     L1 = L / 2.0
     L2 = L / 2.0
 
@@ -77,11 +75,11 @@ def simulate_mid_bearing_pendulum(L=1.0, m1=2.0, m2=6.0, g=9.81, theta1_0=1, ome
 t_eval2, x1, y1, x2, y2 = simulate_mid_bearing_pendulum()
 
 fig2, ax2 = plt.subplots()
-ax2.set_aspect('equal', adjus   table='box')
+ax2.set_aspect("equal", adjustable="box")
 ax2.set_xlim(-1.2, 1.2)
 ax2.set_ylim(-1.2, 0.2)
-line1, = ax2.plot([], [], 'o-', lw=2, color='tab:blue')
-line2, = ax2.plot([], [], 'o-', lw=2, color='tab:orange')
+line1, = ax2.plot([], [], "o-", lw=2, color="tab:blue")
+line2, = ax2.plot([], [], "o-", lw=2, color="tab:orange")
 
 def update2(i):
     line1.set_data([0, x1[i]], [0, y1[i]])
@@ -90,7 +88,6 @@ def update2(i):
 
 ani2 = FuncAnimation(fig2, update2, frames=len(t_eval2), interval=1000/60, blit=True)
 print(t_eval2)
-#plt.show()
-
+plt.show()
 
 '''

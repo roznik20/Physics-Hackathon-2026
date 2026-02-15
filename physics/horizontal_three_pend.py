@@ -53,7 +53,7 @@ def simulate_pendulum(
     return t_eval, x1, x2, x3
 
 
-'''
+
 t, x1, x2, x3 = simulate_pendulum()
 
 fig, ax = plt.subplots()
@@ -76,4 +76,3 @@ def update(i):
 
 ani = FuncAnimation(fig, update, frames=len(t), init_func=init, blit=True, interval=1000 / 60)
 plt.show()
-'''
