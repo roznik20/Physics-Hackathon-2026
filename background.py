@@ -2,6 +2,115 @@
 import pygame
 import random
 
+class Background:
+    def __init__(self, width, height):
+        self.WIDTH = width
+        self.HEIGHT = height
+        self.pink_bg = (255, 207, 249)
+
+        # Load images
+        self.background_img = pygame.image.load("assets/background.png").convert_alpha()
+        self.background_img = pygame.transform.scale(self.background_img, (width, height))
+        self.background_img.set_alpha(190)
+
+        bow_image = pygame.image.load("assets/bow2.png").convert_alpha()
+        bow_width, bow_height = bow_image.get_size()
+
+        # BIG bows
+        self.big_bow = pygame.transform.scale(bow_image, (bow_width // 10, bow_height // 10))
+        self.big_width, self.big_height = self.big_bow.get_size()
+        self.big_bows = [
+            {"pos": [random.randint(0, width), random.randint(0, height)],
+             "rot": random.uniform(0, 360),
+             "rot_speed": random.uniform(0.2, 0.5) * random.choice([-1, 1])}
+            for _ in range(8)
+        ]
+
+        # SMALL bows
+        bow_image.set_alpha(128)
+        self.small_bow = pygame.transform.scale(bow_image, (bow_width // 15, bow_height // 15))
+        self.small_width, self.small_height = self.small_bow.get_size()
+        self.small_bows = [
+            {"pos": [random.randint(0, width), random.randint(0, height)],
+             "rot": random.uniform(0, 360),
+             "rot_speed": random.uniform(0.5, 1.2) * random.choice([-1, 1])}
+            for _ in range(12)
+        ]
+
+        # GLITTERS
+        self.glitters = [
+            {"x": random.randint(0, width),
+             "y": random.randint(0, height),
+             "size": random.randint(1, 3),
+             "speed": random.uniform(1, 3)}
+            for _ in range(50)
+        ]
+
+        # Movement
+        self.speed_x = -1
+        self.speed_y = 1
+        self.small_speed_scale = 0.5
+
+    def update(self):
+        # update glitters
+        for glitter in self.glitters:
+            glitter["y"] += glitter["speed"]
+            if glitter["y"] > self.HEIGHT:
+                glitter["y"] = 0
+                glitter["x"] = random.randint(0, self.WIDTH)
+
+        # move & rotate big bows
+        for bow in self.big_bows:
+            bow["pos"][0] += self.speed_x
+            bow["pos"][1] += self.speed_y
+            if bow["pos"][1] > self.HEIGHT:
+                bow["pos"][1] = -self.big_height
+                bow["pos"][0] = random.randint(0, self.WIDTH)
+            if bow["pos"][0] > self.WIDTH:
+                bow["pos"][0] = -self.big_width
+            if bow["pos"][0] < -self.big_width:
+                bow["pos"][0] = self.WIDTH
+            bow["rot"] = (bow["rot"] + bow["rot_speed"]) % 360
+
+        # small bows
+        for bow in self.small_bows:
+            bow["pos"][0] += self.speed_x * self.small_speed_scale
+            bow["pos"][1] += self.speed_y * self.small_speed_scale
+            if bow["pos"][1] > self.HEIGHT:
+                bow["pos"][1] = -self.small_height
+                bow["pos"][0] = random.randint(0, self.WIDTH)
+            if bow["pos"][0] > self.WIDTH:
+                bow["pos"][0] = -self.small_width
+            if bow["pos"][0] < -self.small_width:
+                bow["pos"][0] = self.WIDTH
+            bow["rot"] = (bow["rot"] + bow["rot_speed"]) % 360
+
+    def draw(self, screen):
+        screen.fill(self.pink_bg)
+        screen.blit(self.background_img, (0, 0))
+
+        # draw glitters
+        for glitter in self.glitters:
+            alpha = random.randint(100, 255)
+            color = (255, 255, 255, alpha)
+            s = pygame.Surface((glitter["size"], glitter["size"]), pygame.SRCALPHA)
+            pygame.draw.circle(s, color, (glitter["size"]//2, glitter["size"]//2), glitter["size"]//2)
+            screen.blit(s, (glitter["x"], glitter["y"]))
+
+        # draw big bows
+        for bow in self.big_bows:
+            rotated_image = pygame.transform.rotate(self.big_bow, bow["rot"])
+            rect = rotated_image.get_rect(center=bow["pos"])
+            screen.blit(rotated_image, rect.topleft)
+
+        # draw small bows
+        for bow in self.small_bows:
+            rotated_image = pygame.transform.rotate(self.small_bow, bow["rot"])
+            rect = rotated_image.get_rect(center=bow["pos"])
+            screen.blit(rotated_image, rect.topleft)
+
+
+"""
 pygame.init()
 speed_x = -1
 speed_y = 1
@@ -149,3 +258,4 @@ while running:
 
 
 pygame.quit()
+"""

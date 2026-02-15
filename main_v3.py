@@ -2,7 +2,7 @@ from email.mime import image
 import math
 from operator import pos
 import pygame
-import matplotlib as plt
+import background as bg
 
 # ----------------- physics objects -----------------
 class Pendulum:
@@ -200,7 +200,20 @@ class Game:
 
         #Instatiating objects into Game()
 
-        self.pend = Pendulum(pivot_m=(1.2, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3)
+        self.pend_dic = { 
+            "pend_lvl1" : Pendulum(pivot_m=(1.2, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl2" : Pendulum(pivot_m=(1.2, -1.5), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl3" : Pendulum(pivot_m=(3, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl4" : Pendulum(pivot_m=(1.2, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl5" : Pendulum(pivot_m=(0, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl6" : Pendulum(pivot_m=(1.2, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl7" : Pendulum(pivot_m=(1.2, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl8" : Pendulum(pivot_m=(1.2, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl9" : Pendulum(pivot_m=(1.2, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3),
+            "pend_lvl10" : Pendulum(pivot_m=(1.2, -1.0), L=self.L, A=self.A, g=self.g, phi=0.3)
+            }
+
+        self.pend = self.pend_dic.get("pend_lvl1")
         self.ball = Ball(radius_m=0.12)
         self.hoop = Hoop(center_m=(3.8, 2.15), radius_m=0.20)
 
@@ -209,6 +222,10 @@ class Game:
         self.im_moonshot = False
         self.flash_start_time = 0
         self.flash_duration = 1000
+
+        #Background variables
+
+        self.background = bg.Background(self.W, self.H)
 
     #defining global functions into Game class ------
 
@@ -269,8 +286,8 @@ class Game:
         return self
     
     def update(self, frame_dt):
+        self.background.update()
         self.accumulator += frame_dt  # add time passed this frame
-
         while self.accumulator >= self.DT:
             self.pend.step(self.DT)
 
@@ -283,6 +300,8 @@ class Game:
                 if self.hoop.scored(self.ball):
                     self.score += 1
                     self.level += 1
+                    self.pend = self.pend_dic[f"pend_lvl{self.level}"]
+                    print(self.pend)
                     self.im_green = True
                     self.flash_start_time = pygame.time.get_ticks()
 
@@ -311,7 +330,8 @@ class Game:
     
     def draw(self, screen):
         self.draw_vertical_gradient(screen, self.skytop, self.skybot)
-        
+        self.background.draw(screen)
+
         # court strip at bottom
         court_y = int(self.H * 0.78)
         pygame.draw.rect(screen, self.court, (0, court_y, self.W, self.H - court_y))
