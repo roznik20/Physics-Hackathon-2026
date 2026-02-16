@@ -1,5 +1,5 @@
 from __future__ import annotations
-from hoop_spawnv1 import HoopSprite 
+from basketball_sprites.hoop_spawnv1 import HoopSprite 
 
 
 """
