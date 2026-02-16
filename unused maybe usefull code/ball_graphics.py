@@ -14,8 +14,7 @@ clock = pygame.time.Clock()
 # Load ball image (make sure this exists in assets/)
 ball_image = pygame.image.load("assets/ball.png").convert_alpha()
 ball_width, ball_height = ball_image.get_size()
-ball_image = pygame.transform.scale(
-    ball_image, (ball_width // 10, ball_height // 10))
+ball_image = pygame.transform.scale(ball_image, (ball_width // 10, ball_height // 10))
 
 # Ball properties
 ball_x, ball_y = 400, 300       # initial position
