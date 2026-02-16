@@ -587,7 +587,7 @@ class MotionManager:
                 filename="simple_pendulum.py",
                 func_name="simulate_pendulum",
                 adapter=_adapt_txy,
-                default_kwargs={"L_val": .5, "g_val": G, "theta0": 1.0, "omega0": 2.5},
+                default_kwargs={"L_val": .5, "g_val": .5*G, "theta0": 1.0, "omega0": 0},
             ),
             MotionSpec(
                 name="2D springs",
