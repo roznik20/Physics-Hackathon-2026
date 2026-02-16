@@ -9,7 +9,7 @@ from matplotlib.animation import FuncAnimation
 
 
 
-def simulate_pendulum(m1 =1 , m2 = 1, g=9.81, r=1, theta = 1.0, omega = 0.0, x = 0.0, v = 0.0, t_max=600, fps=60):
+def simulate_pendulum(m1 =1 , m2 = 1, g=9.81, r=1, theta = -.5, omega = -1.0, x = -1, v = 1, t_max=600, fps=60):
 
     def f(t, y):
         th, w, x, v = y

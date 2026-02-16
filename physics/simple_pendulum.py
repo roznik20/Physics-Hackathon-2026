@@ -5,7 +5,7 @@ from matplotlib.animation import FuncAnimation
 # --- Numerical solution and coordinates ---
 import matplotlib.pyplot as plt
 
-def simulate_pendulum(L_val=0.5, g_val=9.81, theta0=1, omega0=5, t_max=600, fps=60):
+def simulate_pendulum(L_val=50, g_val=9.81, theta0=1, omega0=5, t_max=600, fps=60):
     def f(t, y):
         #theta, omega = y
         theta = y[0]

@@ -6,7 +6,7 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 from sympy import fps
 
-def simulate_pendelum(b = 0.1, omega=3 ,d=0.3, m= 2, x0=-1, x_dis = -0.2, v_ini = 0, k=8, t_max=100.0, fps=60):
+def simulate_pendulum(b = 0.1, omega=3 ,d=0.3, m= 2, x0=-1, x_dis = -0.2, v_ini = 0, k=8, t_max=100.0, fps=60):
     def f(t, y):
         x, v = y
         
@@ -26,7 +26,7 @@ def simulate_pendelum(b = 0.1, omega=3 ,d=0.3, m= 2, x0=-1, x_dis = -0.2, v_ini 
 
 
 
-t, x, x_wall = simulate_pendelum()
+t, x, x_wall = simulate_pendulum()
 fig, ax = plt.subplots()
 ax.set_xlim(-2.0, 2.0)
 ax.set_ylim(-0.2, 0.2)

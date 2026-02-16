@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("TkAgg")
 import numpy as np
 from scipy.integrate import solve_ivp
 from matplotlib.animation import FuncAnimation
 
-def simulate_pendulum(m1 = 2, m2 = 1, r1 = 1.2, r2= 1, t_max= 600, theta1_0 = 1, omega1_0 = 1.23, theta2_0 = -2, omega2_0 = 1, fps = 60, g = 9.81):
+def simulate_pendulum(m1 = 2, m2 = 1, r1 = 1.2, r2= 1, t_max= 600, theta1_0 = 1, omega1_0 = -2, theta2_0 = -2, omega2_0 = 10, fps = 60, g = 9.81):
     def f(t, y):
         t1, w1, t2, w2 = y
         delta = t2 - t1

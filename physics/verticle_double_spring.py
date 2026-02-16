@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 from matplotlib.animation import FuncAnimation
+import matplotlib
+matplotlib.use("TkAgg")
 
 def simulate_vertical_2mass(
     m1=1.0, m2=1.3,

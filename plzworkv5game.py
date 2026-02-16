@@ -31,8 +31,6 @@ import background as bg
 from vladbasketv1 import BasketAssembly
 from hoop_spawnv1 import HoopSprite
 
-
-
 # =============================================================================
 # Global configuration (make everything consistent at 60 FPS)
 # =============================================================================
@@ -41,7 +39,7 @@ DT = 1.0 / FPS
 
 # Rendering / scale
 WINDOW_SCALE = 0.90  # 90% of monitor, windowed
-PX_PER_M = 220       # meters -> pixels (same as v2/v3 feel)
+PX_PER_M = 220  # meters -> pixels (same as v2/v3 feel)
 
 # Hoop scoring circle in world meters (cheap arcade scoring)
 HOOP_RADIUS_M = 0.20
@@ -51,8 +49,8 @@ G = 9.81
 
 # Level motion: per-level motion model selection
 LEVEL_MOTION_T_MAX = 120.0  # seconds of precomputed motion per level (clamps at end)
-BASE_TARGET_AMP_M = 0.55    # target max amplitude of hoop motion at level 1 (meters)
-AMP_PER_LEVEL_M = 0.06      # added target amplitude per level (meters)
+BASE_TARGET_AMP_M = 0.55  # target max amplitude of hoop motion at level 1 (meters)
+AMP_PER_LEVEL_M = 0.06  # added target amplitude per level (meters)
 MAX_TARGET_AMP_M = 1.15
 
 # "Good" hoop center from main_v2/v3 (keeps the game scorable)
@@ -70,13 +68,13 @@ MARGIN_RIGHT = 160
 MARGIN_TOP = 120
 MARGIN_BOTTOM = 200
 
-
 # =============================================================================
 # Paths / assets
 # =============================================================================
 BASE_DIR = Path(__file__).resolve().parent
 ASSET_DIR = BASE_DIR / "assets"
 ANCHOR_JSON = ASSET_DIR / "hoop_anchor.json"
+
 
 def asset_path(name: str) -> Path:
     """
@@ -140,8 +138,6 @@ def draw_text(screen, font, text, x, y, color=(25, 25, 25)):
     screen.blit(img, (x, y))
 
 
-
-
 # =============================================================================
 # Hoop rig visualization (anchors + strings/springs) to make the motion "feel physical"
 # =============================================================================
@@ -154,7 +150,8 @@ class HoopRig:
     amp_px: int = 8
 
 
-def _clamp_anchor_m(p: Tuple[float, float], W: int, H: int, px_per_m: float, margin_px: int = 18) -> Tuple[float, float]:
+def _clamp_anchor_m(p: Tuple[float, float], W: int, H: int, px_per_m: float, margin_px: int = 18) -> Tuple[
+    float, float]:
     world_w = W / px_per_m
     world_h = H / px_per_m
     m = margin_px / px_per_m
@@ -183,6 +180,12 @@ def build_hoop_rig(motion_name: str, base_center_m: Tuple[float, float],
     if "double pendulum" in name:
         pivot = _clamp_anchor_m((base_center_m[0], base_center_m[1] - L), W, H, px_per_m)
         return HoopRig(kind="double_pendulum", anchors_m=[pivot], label="Double pendulum (chaos)")
+    if "three" in name:
+        pivot = _clamp_anchor_m((base_center_m[0], base_center_m[1] - L), W, H, px_per_m)
+        return HoopRig(kind="rod", anchors_m=[pivot], label="Three pendulum chain")
+    if "cart" in name:
+        pivot = _clamp_anchor_m((base_center_m[0], base_center_m[1] - L), W, H, px_per_m)
+        return HoopRig(kind="rod", anchors_m=[pivot], label="Pendulum cart")
     if "spring pendulum" in name:
         pivot = _clamp_anchor_m((base_center_m[0], base_center_m[1] - L), W, H, px_per_m)
         return HoopRig(kind="spring", anchors_m=[pivot], label="Spring pendulum")
@@ -242,8 +245,24 @@ def draw_hoop_rig(screen: pygame.Surface, rig: HoopRig,
                   rim_center_px: Tuple[int, int],
                   world_to_screen_fn: Callable[[Tuple[float, float]], Tuple[int, int]],
                   font: pygame.font.Font) -> None:
-    """Render fixed anchor(s) and connector(s) from anchors to rim center."""
+    """
+    Render anchors/connectors ONLY for:
+        - 2D springs
+        - Driven damped spring (horizontal spring)
+        - Simple pendulum
+        - Spring pendulum
+    All other systems are handled elsewhere.
+    """
+
     if rig is None or rig.kind == "none":
+        return
+
+    # Only allow specific rig kinds
+    not_allowed = {"double", "three", "horizontal", "cart", "vertical"}
+
+    name = rig.label.lower()
+
+    if any(word in name for word in not_allowed):
         return
 
     # Subtle behind-hoop styling
@@ -254,39 +273,45 @@ def draw_hoop_rig(screen: pygame.Surface, rig: HoopRig,
     # Label near first anchor
     if rig.anchors_m:
         a0_px = world_to_screen_fn(rig.anchors_m[0])
-        draw_text(screen, font, f"Rig: {rig.label}", a0_px[0] + 14, a0_px[1] - 22, color=(20, 20, 20))
+        draw_text(
+            screen,
+            font,
+            f"Rig: {rig.label}",
+            a0_px[0] + 14,
+            a0_px[1] - 22,
+            color=(20, 20, 20),
+        )
 
-    if rig.kind == "double_pendulum":
-        pivot_px = world_to_screen_fn(rig.anchors_m[0])
-        # fake intermediate joint to communicate a double-pendulum rig
-        jx = int(pivot_px[0] + 0.55 * (rim_center_px[0] - pivot_px[0]))
-        jy = int(pivot_px[1] + 0.55 * (rim_center_px[1] - pivot_px[1]))
-        joint_px = (jx, jy)
-
-        aa_circle(screen, anchor_col, pivot_px, 6)
-        aa_circle(screen, anchor_col, joint_px, 5)
-
-        aa_line(screen, rod_col, pivot_px, joint_px, width=5)
-        aa_line(screen, rod_col, joint_px, rim_center_px, width=5)
-
-        # small directional hint
-        pygame.draw.circle(screen, (0, 0, 0), pivot_px, 8, 1)
-        return
-
-    # Generic: connect anchors to rim center
+    # Draw anchors + connectors
     for a_m in rig.anchors_m:
         a_px = world_to_screen_fn(a_m)
+
+        # anchor point
         aa_circle(screen, anchor_col, a_px, 6)
 
+        # springs
         if rig.kind in ("spring", "springs2d", "spring_horizontal"):
-            draw_spring(screen, a_px, rim_center_px, color=spring_col, width=3, coils=rig.coils, amp_px=rig.amp_px)
+            draw_spring(
+                screen,
+                a_px,
+                rim_center_px,
+                color=spring_col,
+                width=3,
+                coils=rig.coils,
+                amp_px=rig.amp_px,
+            )
         else:
+            # rod (simple pendulum)
             aa_line(screen, rod_col, a_px, rim_center_px, width=5)
 
-        # For horizontal spring: draw a little "wall" at the anchor
+        # horizontal wall for driven damped spring
         if rig.kind == "spring_horizontal":
-            pygame.draw.rect(screen, anchor_col, (a_px[0] - 10, a_px[1] - 18, 6, 36))
-            pygame.draw.rect(screen, anchor_col, (a_px[0] - 16, a_px[1] - 18, 6, 36))
+            pygame.draw.rect(screen, anchor_col,
+                             (a_px[0] - 10, a_px[1] - 18, 6, 36))
+            pygame.draw.rect(screen, anchor_col,
+                             (a_px[0] - 16, a_px[1] - 18, 6, 36))
+
+
 def load_anchor_from_json() -> Optional[Tuple[int, int]]:
     try:
         if ANCHOR_JSON.exists():
@@ -302,7 +327,8 @@ def load_anchor_from_json() -> Optional[Tuple[int, int]]:
 
 def save_anchor_to_json(anchor: Tuple[int, int]) -> None:
     try:
-        ANCHOR_JSON.write_text(json.dumps({"rim_anchor_px": [int(anchor[0]), int(anchor[1])]}, indent=2), encoding="utf-8")
+        ANCHOR_JSON.write_text(json.dumps({"rim_anchor_px": [int(anchor[0]), int(anchor[1])]}, indent=2),
+                               encoding="utf-8")
     except Exception as e:
         print("WARNING: failed to save hoop anchor JSON:", e)
 
@@ -312,6 +338,7 @@ def save_anchor_to_json(anchor: Tuple[int, int]) -> None:
 # =============================================================================
 class Pendulum:
     """Small-angle analytic pendulum: theta = A cos(omega t + phi)."""
+
     def __init__(self, pivot_m=(1.5, 1.2), L=1.2, A=0.75, g=9.81, phi=0.0):
         self.pivot = pivot_m
         self.L = L
@@ -332,14 +359,14 @@ class Pendulum:
     def ball_pos(self):
         th = self.theta()
         x = self.pivot[0] + self.L * math.sin(th)
-        y = self.pivot[1] + self.L * math.cos(th)   # y-down world
+        y = self.pivot[1] + self.L * math.cos(th)  # y-down world
         return (x, y)
 
     def ball_vel(self):
         th = self.theta()
         thd = self.theta_dot()
         vx = self.L * thd * math.cos(th)
-        vy = -self.L * thd * math.sin(th)           # y-down world
+        vy = -self.L * thd * math.sin(th)  # y-down world
         return (vx, vy)
 
     def step(self, dt):
@@ -373,6 +400,7 @@ class Ball:
 
 class Hoop:
     """Score zone as a circle (meters). Drawing is handled by PNG sprite."""
+
     def __init__(self, center_m=(2.0, 2.1), radius_m=HOOP_RADIUS_M):
         self.c = center_m
         self.r = radius_m
@@ -383,7 +411,7 @@ class Hoop:
     def scored(self, ball: Ball) -> bool:
         dx = ball.pos[0] - self.c[0]
         dy = ball.pos[1] - self.c[1]
-        return (dx*dx + dy*dy) <= (self.r * self.r)
+        return (dx * dx + dy * dy) <= (self.r * self.r)
 
 
 # =============================================================================
@@ -462,6 +490,16 @@ def _adapt_txy(out):
     return t, x, y
 
 
+def _adapt_forced(out):
+    t, x, x_wall = out
+    return t, x, x_wall
+
+
+def _adapt_2D(out):
+    t_eval, x, y, vertical_spring_x, vertical_spring_y, horizontal_spring_x, horizontal_spring_y = out
+    return t_eval, x, y
+
+
 def _adapt_tx(out):
     t, x = out
     # y will be zero; caller will handle
@@ -474,7 +512,7 @@ def _adapt_double_pend(out):
 
 
 def _adapt_spring_pend(out):
-    t, r, th, x, y = out
+    t, x, y = out
     return t, x, y
 
 
@@ -484,14 +522,59 @@ def _adapt_damped_spring(out):
     return t, x, None
 
 
+def _adapt_three_pend(out):
+    t, x0, x1, x2 = out[:4]
+    return t, x2, None
+
+
+def _adapt_cart(out):
+    t, x_cart, y_cart, x_pend, y_pend = out
+    return t, x_pend, y_pend
+
+
+def _adapt_vertical(out):
+    t, x1, x2, total_length = out
+    return t, None, x2
+
+
 class MotionManager:
     """Cycles through different physics-based hoop motions as levels increase."""
+
     def __init__(self, physics_dir: Path, fps: int, t_max: float):
         self.physics_dir = physics_dir
         self.fps = int(fps)
         self.t_max = float(t_max)
 
         self.specs: List[MotionSpec] = [
+            MotionSpec(
+                name="Horizontal spring",
+                filename="horizontal_spring.py",
+                func_name="simulate_pendulum",
+                adapter=_adapt_forced,
+                default_kwargs={},
+            ),
+            MotionSpec(
+                name="Three pendulum",
+                filename="horizontal_three_pend.py",
+                func_name="simulate_pendulum",
+                adapter=_adapt_three_pend,
+                default_kwargs={},
+            ),
+            MotionSpec(
+                name="Pendulum cart",
+                filename="pendulum_cart.py",
+                func_name="simulate_pendulum",
+                adapter=_adapt_cart,
+                default_kwargs={},
+            ),
+            MotionSpec(
+                name="Vertical double spring",
+                filename="verticle_double_spring.py",
+                func_name="simulate_vertical_2mass",
+                adapter=_adapt_vertical,
+                default_kwargs={},
+            ),
+
             MotionSpec(
                 name="Stationary",
                 filename="stationiary.py",
@@ -504,35 +587,38 @@ class MotionManager:
                 filename="simple_pendulum.py",
                 func_name="simulate_pendulum",
                 adapter=_adapt_txy,
-                default_kwargs={"L_val": 0.55, "g_val": G, "theta0": 1.0, "omega0": 4.5},
+                default_kwargs={"L_val": .5, "g_val": G, "theta0": 1.0, "omega0": 2.5},
             ),
             MotionSpec(
                 name="2D springs",
                 filename="springs_2d.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_txy,
+                adapter=_adapt_2D,
                 default_kwargs={"L_extention_x": 0.35, "L_extention_y": 0.25, "m": 2, "k_x": 6, "k_y": 4},
             ),
             MotionSpec(
                 name="Driven damped spring (1D)",
                 filename="damped_spring.py",
-                func_name="simulate_pendelum",
+                func_name="simulate_pendulum",
                 adapter=_adapt_damped_spring,
-                default_kwargs={"b": 0.25, "omega": 2.2, "d": 0.40, "m": 2, "x0": -0.4, "x_dis": 0.25, "v_ini": 0.0, "k": 10},
+                default_kwargs={"b": 0.25, "omega": 2.2, "d": 0.40, "m": 2, "x0": -0.4, "x_dis": 0.25, "v_ini": 1,
+                                "k": 10},
             ),
             MotionSpec(
                 name="Spring pendulum",
                 filename="spring_pendulum.py",
-                func_name="simulate_spring_pendulum",
+                func_name="simulate_pendulum",
                 adapter=_adapt_spring_pend,
-                default_kwargs={"m": 1.0, "k": 25.0, "L0": 0.9, "g": G, "r0": 1.0, "theta0": 1.0, "rdot0": 0.0, "thetadot0": 2.0},
+                default_kwargs={"m": 1.0, "k": 25.0, "L0": 0.9, "g": G, "r0": 1.0, "theta0": 1.0, "rdot0": 0.0,
+                                "thetadot0": 2.0},
             ),
             MotionSpec(
                 name="Double pendulum (chaos)",
                 filename="double_pendulum.py",
                 func_name="simulate_pendulum",
                 adapter=_adapt_double_pend,
-                default_kwargs={"m1": 2.0, "m2": 1.0, "r1": 0.75, "r2": 0.70, "theta1_0": 1.2, "omega1_0": 0.0, "theta2_0": -1.4, "omega2_0": 0.0, "g": G},
+                default_kwargs={"m1": 2.0, "m2": 1.0, "r1": 0.75, "r2": 0.70, "theta1_0": 1.2, "omega1_0": 0.0,
+                                "theta2_0": -1.4, "omega2_0": 0.0, "g": G},
             ),
         ]
 
@@ -557,65 +643,98 @@ class MotionManager:
         call_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
         return fn(**call_kwargs)
 
-    def get_level_motion(self, level: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
+    def get_level_motion(self, level: int):
         spec = self.spec_for_level(level)
 
-        # compute (or reuse) the base centered motion for this spec
         if spec.name not in self._base_cache:
             out = self._call_sim(spec)
-            t, x, y = spec.adapter(out)
 
-            t = np.asarray(t, dtype=float)
-            x = np.asarray(x, dtype=float)
-            if y is None:
+            # ---------- SYSTEM-SPECIFIC EXTRA DATA ----------
+            extra = {}
+
+            if spec.name.lower().startswith("double"):
+                t, x1, y1, x2, y2 = out
+                extra["mid"] = (np.asarray(x1), np.asarray(y1))
+                x = x2
+                y = y2
+
+            elif spec.name.lower().startswith("horizontal spring"):
+                t, x, wall = out
+                extra["wall"] = np.asarray(wall)
                 y = np.zeros_like(x)
-            else:
-                y = np.asarray(y, dtype=float)
 
-            # center about mean so motion is relative to (0,0)
+            elif spec.name.lower().startswith("three"):
+                t, x0, x1, x2 = out[:4]
+                extra["boxes"] = (np.asarray(x0), np.asarray(x1))
+                x = x2
+                y = np.zeros_like(x)
+
+            elif spec.name.lower().startswith("pendulum cart"):
+                t, x_cart, y_cart, x_pend, y_pend = out
+                extra["cart"] = (np.asarray(x_cart), np.asarray(y_cart))
+                x = x_pend
+                y = y_pend
+
+            elif spec.name.lower().startswith("vertical"):
+                t, x1, x2, total_length = out
+                extra["bottom"] = np.asarray(x1)
+
+                # Vertical motion only
+                x = np.zeros_like(x2)
+                y = np.asarray(x2)
+
+            else:
+                t, x, y = spec.adapter(out)
+
+            t = np.asarray(t, float)
+            x = np.asarray(x, float)
+            y = np.asarray(y, float) if y is not None else np.zeros_like(x)
+
             dx_up = x - float(np.mean(x))
             dy_up = y - float(np.mean(y))
 
-            # treat source y as y-up; convert to y-down
             dx0 = dx_up
             dy0 = -dy_up
 
-            # sanitize
-            dx0 = np.nan_to_num(dx0, nan=0.0, posinf=0.0, neginf=0.0)
-            dy0 = np.nan_to_num(dy0, nan=0.0, posinf=0.0, neginf=0.0)
+            self._base_cache[spec.name] = (t, dx0, dy0, extra)
 
-            self._base_cache[spec.name] = (t, dx0, dy0)
+        t, dx0, dy0, extra = self._base_cache[spec.name]
 
-        t, dx0, dy0 = self._base_cache[spec.name]
-
-        # amplitude scaling with level (keeps things on-screen + scorable)
         target = min(BASE_TARGET_AMP_M + AMP_PER_LEVEL_M * (max(1, int(level)) - 1), MAX_TARGET_AMP_M)
         max_abs = float(max(np.max(np.abs(dx0)), np.max(np.abs(dy0)), 1e-9))
-        scale = 1.0 if max_abs <= target else (target / max_abs)
+        scale = target / max_abs
 
-        dx = (dx0 * scale).copy()
-        dy = (dy0 * scale).copy()
+        dx = dx0 * scale
+        dy = dy0 * scale
 
-        return t, dx, dy, spec.name
+        if "mid" in extra:  # double pendulum
+            mx, my = extra["mid"]
+            extra["mid"] = (mx * scale, my * scale)
+
+        return t, dx, dy, spec.name, extra
 
 
 # Fallback stationary motion if something explodes
 _DEFAULT_MOTION_MGR: Optional[MotionManager] = None
 
 
-def load_motion_arrays_for_level(level: int, fps: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
+def load_motion_arrays_for_level(level: int, fps: int):
     global _DEFAULT_MOTION_MGR
     if _DEFAULT_MOTION_MGR is None:
         _DEFAULT_MOTION_MGR = MotionManager(PHYSICS_DIR, fps=fps, t_max=LEVEL_MOTION_T_MAX)
 
-    try:
-        return _DEFAULT_MOTION_MGR.get_level_motion(level)
-    except Exception as e:
-        print(f"WARNING: failed to generate motion arrays for level {level}: {e}")
-        # 1 second of zeros (but clamp will stop)
-        t = np.linspace(0.0, 1.0, int(1.0 * fps))
-        z = np.zeros_like(t)
-        return t, z, z, "(fallback)"
+    return _DEFAULT_MOTION_MGR.get_level_motion(level)
+
+    # try:
+    return _DEFAULT_MOTION_MGR.get_level_motion(level)
+    # except Exception as e:
+    #     print(f"WARNING: failed to generate motion arrays for level {level}: {e}")
+    #     # 1 second of zeros (but clamp will stop)
+    #     t = np.linspace(0.0, 1.0, int(1.0 * fps))
+    #     z = np.zeros_like(t)
+    #     return t, z, z, "(fallback)"
+
+
 def choose_base_center_m(W: int, H: int, dx_m: np.ndarray, dy_m: np.ndarray) -> Tuple[float, float]:
     """
     Choose a hoop base center (world meters) so the entire motion stays on-screen.
@@ -666,14 +785,14 @@ class Menu:
 
         self.font = pygame.font.SysFont(None, 48)
         self.title_font = pygame.font.SysFont(None, 100)
-        self.title_color = (10,10,10)
+        self.title_color = (10, 10, 10)
 
         self.bg_color = (30, 30, 30)
         self.button_color = (255, 153, 204)
         self.button_hover_color = (218, 112, 214)
         self.text_color = (255, 255, 255)
 
-        #bg images
+        # bg images
         self.bliss = pygame.image.load("assets/bliss.jpg")
         self.lebron = pygame.image.load("assets/lebron.png")
 
@@ -689,7 +808,7 @@ class Menu:
     def scale_and_center_image(self, image):
         # get original size
         img_w, img_h = image.get_size()
-    
+
         # compute scale factors
         scale_w = self.screen_width / img_w
         scale_h = self.screen_height / img_h
@@ -737,7 +856,6 @@ class Game:
         self.DT = DT
         self.px_per_m = PX_PER_M
 
-
         # Colors
         self.white = (245, 245, 245)
         self.black = (25, 25, 25)
@@ -781,6 +899,7 @@ class Game:
             self.motion_dx_m,
             self.motion_dy_m,
             self.motion_name,
+            self.motion_extra,
         ) = load_motion_arrays_for_level(self.level, self.FPS)
         self.motion_i = 0
         self.n_motion = len(self.motion_t)
@@ -805,7 +924,8 @@ class Game:
 
         # Basket assembly (pixel geometry + clamping)
         self.basket = BasketAssembly(center_xy=world_to_screen(self.base_center_m))
-        self.hoop_rig = build_hoop_rig(self.motion_name, self.base_center_m, self.motion_dx_m, self.motion_dy_m, self.W, self.H, self.px_per_m)
+        self.hoop_rig = build_hoop_rig(self.motion_name, self.base_center_m, self.motion_dx_m, self.motion_dy_m, self.W,
+                                       self.H, self.px_per_m)
 
         # Hoop sprite (PNG)
         rim_anchor = load_anchor_from_json()
@@ -825,7 +945,7 @@ class Game:
         self.calibrating = False
         self.cal_top_left = None
 
-        #Background variables
+        # Background variables
 
         self.background = bg.Background(self.W, self.H)
 
@@ -841,11 +961,12 @@ class Game:
 
         This is called after a SCORE to change the hoop motion model (levels).
         """
-        (t, dx_m, dy_m, name) = load_motion_arrays_for_level(new_level, self.FPS)
+        (t, dx_m, dy_m, name, extra) = load_motion_arrays_for_level(new_level, self.FPS)
         self.motion_t, self.motion_dx_m, self.motion_dy_m = t, dx_m, dy_m
         self.motion_name = name
         self.motion_i = 0
         self.n_motion = len(self.motion_t)
+        self.motion_extra = extra
 
         # Recompute base center and apply consistent shift so shots remain scorable
         self.base_center_m = choose_base_center_m(self.W, self.H, self.motion_dx_m, self.motion_dy_m)
@@ -859,12 +980,12 @@ class Game:
         self.hoop_center_m = self.base_center_m
         self.hoop.set_center(self.hoop_center_m)
         self.basket = BasketAssembly(center_xy=world_to_screen(self.base_center_m))
-        self.hoop_rig = build_hoop_rig(self.motion_name, self.base_center_m, self.motion_dx_m, self.motion_dy_m, self.W, self.H, self.px_per_m)
+        self.hoop_rig = build_hoop_rig(self.motion_name, self.base_center_m, self.motion_dx_m, self.motion_dy_m, self.W,
+                                       self.H, self.px_per_m)
 
         if reset_ball:
             self.ball.attach_to(self.pend)
             self.trail.clear()
-
 
     # --- events ---
     def handle_events(self, event):
@@ -894,8 +1015,8 @@ class Game:
 
             if event.key == pygame.K_ESCAPE and (not self.calibrating):
                 return "MENU"
-        
-            if event.key == pygame.K_s and self.level<10:
+
+            if event.key == pygame.K_s:
                 self.score += 1
                 self.level += 1
                 self.flash_start_time = pygame.time.get_ticks()
@@ -911,7 +1032,7 @@ class Game:
                 save_anchor_to_json((int(ax), int(ay)))
                 print(f"RIM ANCHOR PICKED: rim_anchor_px=({ax}, {ay}) saved to {ANCHOR_JSON}")
                 self.calibrating = False
-        
+
         return "GAME"
 
     # --- update ---
@@ -941,7 +1062,7 @@ class Game:
                 self.ball.step(self.DT, g=self.g, wind_ax=self.wind_ax)
 
                 # score check (meters)
-                if self.hoop.scored(self.ball) and self.level<10:
+                if self.hoop.scored(self.ball):
                     self.score += 1
                     self.level += 1
                     self.im_green = True
@@ -949,10 +1070,10 @@ class Game:
 
                     # Switch hoop motion model for the NEW level, and reset ball + motion
                     self._apply_level_motion(self.level, reset_ball=True)
-                
-                elif self.hoop.scored(self.ball) and self.level == 10:
+
+                elif self.hoop.scored(self.ball):
                     self.score += 1
-                    self.win = True
+                    # self.win removed for infinite levels
 
                 else:
                     # miss flash (soft)
@@ -971,6 +1092,99 @@ class Game:
                     self.trail.clear()
 
             self.accumulator -= self.DT
+
+    def draw_physics_system(game, screen, rim_center_px):
+        name = game.motion_name.lower()
+        i = game.motion_i
+        extra = game.motion_extra
+
+        def to_px(x, y=0):
+            return game.world_to_screen((game.base_center_m[0] + x, game.base_center_m[1] + y))
+
+        # ---------- DOUBLE PENDULUM ----------
+        if "double pendulum" in name and "mid" in extra:
+            mid_x, mid_y = extra["mid"]
+
+            # Height offset in WORLD units (not pixels)
+            world_shift = (game.H * 0.13) / game.px_per_m
+
+            # Base anchor (physics origin) shifted upward once
+            pivot_world = (
+                game.base_center_m[0],
+                game.base_center_m[1] - world_shift
+            )
+
+            pivot_px = game.world_to_screen(pivot_world)
+
+            # Middle pendulum relative to that same anchor
+            mid_world = (
+                pivot_world[0] + mid_x[i],
+                pivot_world[1] - mid_y[i]  # physics y-up → screen y-down
+            )
+
+            mid_px = game.world_to_screen(mid_world)
+
+            # Draw rods
+            aa_line(screen, (0, 0, 0), pivot_px, mid_px, 4)
+            aa_line(screen, (0, 0, 0), mid_px, rim_center_px, 4)
+
+            # Draw joints
+            aa_circle(screen, (0, 0, 0), pivot_px, 6)
+            aa_circle(screen, (0, 0, 0), mid_px, 6)
+
+            return
+
+        # ---------- HORIZONTAL SPRING ----------
+        if "horizontal spring" in name and "wall" in extra:
+            wall_x = extra["wall"][i]
+            wall_px = to_px(wall_x)
+
+            pygame.draw.rect(screen, (40, 40, 40), (wall_px[0] - 10, wall_px[1] - 40, 20, 80))
+            draw_spring(screen, wall_px, rim_center_px)
+            return
+
+        # ---------- THREE PENDULUM ----------
+        if "three" in name and "boxes" in extra:
+            b1, b2 = extra["boxes"]
+            p1 = to_px(b1[i])
+            p2 = to_px(b2[i])
+
+            wall = (p1[0] - 120, p1[1])
+
+            pygame.draw.rect(screen, (40, 40, 40), (wall[0] - 10, wall[1] - 40, 20, 80))
+
+            draw_spring(screen, wall, p1)
+            pygame.draw.rect(screen, (0, 0, 0), (p1[0] - 10, p1[1] - 10, 20, 20))
+
+            draw_spring(screen, p1, rim_center_px)
+
+            draw_spring(screen, rim_center_px, p2)
+            pygame.draw.rect(screen, (0, 0, 0), (p2[0] - 10, p2[1] - 10, 20, 20))
+            return
+
+        # ---------- PENDULUM CART ----------
+        if "cart" in name and "cart" in extra:
+            cx, cy = extra["cart"]
+            cart_px = to_px(cx[i], -cy[i])
+
+            pygame.draw.rect(screen, (0, 0, 0), (cart_px[0] - 20, cart_px[1] - 10, 40, 20))
+            aa_line(screen, (0, 0, 0), cart_px, rim_center_px, 4)
+            return
+
+        # ---------- VERTICAL DOUBLE SPRING ----------
+        if "vertical" in name and "bottom" in extra:
+            b = extra["bottom"]
+            bottom_px = to_px(0, -b[i])
+
+            top = (rim_center_px[0], rim_center_px[1] - 150)
+
+            pygame.draw.rect(screen, (40, 40, 40), (top[0] - 10, top[1] - 40, 20, 80))
+
+            draw_spring(screen, top, rim_center_px)
+            draw_spring(screen, rim_center_px, bottom_px)
+
+            pygame.draw.rect(screen, (0, 0, 0), (bottom_px[0] - 10, bottom_px[1] - 10, 20, 20))
+            return
 
     # --- draw ---
     def draw(self, screen):
@@ -994,13 +1208,13 @@ class Game:
             if len(self.trail) > self.TRAIL_MAX:
                 self.trail.pop(0)
             for i in range(1, len(self.trail)):
-                pygame.draw.line(screen, (140, 160, 200), self.trail[i-1], self.trail[i], 3)
+                pygame.draw.line(screen, (140, 160, 200), self.trail[i - 1], self.trail[i], 3)
 
         # ball shadow
         shadow_strength = max(0.15, min(0.65, (ball_px[1] / max(self.H, 1))))
         shadow_w = int(self.m2px(self.ball.r) * (1.6 + 0.8 * shadow_strength))
         shadow_h = int(self.m2px(self.ball.r) * (0.55 + 0.3 * shadow_strength))
-        shadow_surf = pygame.Surface((shadow_w*2, shadow_h*2), pygame.SRCALPHA)
+        shadow_surf = pygame.Surface((shadow_w * 2, shadow_h * 2), pygame.SRCALPHA)
         pygame.draw.ellipse(shadow_surf, (0, 0, 0, int(120 * shadow_strength)), shadow_surf.get_rect())
         screen.blit(shadow_surf, (ball_px[0] - shadow_w, court_y - shadow_h))
 
@@ -1015,13 +1229,14 @@ class Game:
 
         # draw physical rig (anchors + strings/springs) so hoop motion is understandable
         if not self.calibrating:
+            self.draw_physics_system(screen, rim_center_px)
             draw_hoop_rig(screen, self.hoop_rig, rim_center_px, self.world_to_screen, self.font)
-
 
         if self.calibrating and self.cal_top_left is not None:
             tlx, tly = self.cal_top_left
             screen.blit(self.hoop_sprite.surface, (tlx, tly))
-            pygame.draw.rect(screen, (40, 40, 40), (tlx, tly, self.hoop_sprite.surface.get_width(), self.hoop_sprite.surface.get_height()), 2)
+            pygame.draw.rect(screen, (40, 40, 40),
+                             (tlx, tly, self.hoop_sprite.surface.get_width(), self.hoop_sprite.surface.get_height()), 2)
             draw_text(screen, self.bigfont, "CALIBRATION: click the RIM CENTER", 20, 20)
             draw_text(screen, self.font, f"Saving to {ANCHOR_JSON.name}", 20, 55)
             draw_text(screen, self.font, "ESC = cancel", 20, 75)
@@ -1059,7 +1274,6 @@ class Game:
                 self.im_moonshot = False
 
 
-
 # =============================================================================
 # Main loop (menu + game)
 # =============================================================================
@@ -1071,7 +1285,7 @@ def main():
     H = max(600, int(info.current_h * WINDOW_SCALE))
 
     screen = pygame.display.set_mode((W, H))
-    pygame.display.set_caption("Pendulum Basketball (main_v3 + moving hoop + LEVEL motions @ 60 FPS)")
+    pygame.display.set_caption("Pendulum Basketball (p_v3 + moving hoop + LEVEL motions @ 60 FPS)")
 
     menu = Menu(W, H)
     game = Game(W, H)
