@@ -1,7 +1,3 @@
-from __future__ import annotations
-from basketball_sprites.hoop_spawnv1 import HoopSprite 
-
-
 """
 basket_assembly.py
 
@@ -19,9 +15,13 @@ IMPORTANT RULE:
 - Only derive visuals/collision shapes from center + offsets.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 import math
 import pygame
+
+from basketball_sprites.hoop_spawnv1 import HoopSprite
 
 
 # =============================================================================

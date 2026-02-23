@@ -222,7 +222,7 @@ def draw_spring(screen: pygame.Surface, p1: Tuple[int, int], p2: Tuple[int, int]
 
     ux, uy = dx / dist, dy / dist
     # Perpendicular
-    px, py = -uy, ux
+    nx, ny = -uy, ux
 
     pts = [(x1, y1)]
     # leave small straight segments at both ends
@@ -236,7 +236,7 @@ def draw_spring(screen: pygame.Surface, p1: Tuple[int, int], p2: Tuple[int, int]
     for i in range(1, coils + 1):
         t = start + (end - start) * (i / (coils + 1))
         sgn = -1 if (i % 2 == 0) else 1
-        pts.append((x1 + ux * t + px * amp_px * sgn, y1 + uy * t + py * amp_px * sgn))
+        pts.append((x1 + ux * t + nx * amp_px * sgn, y1 + uy * t + ny * amp_px * sgn))
     pts.append((x2, y2))
 
     pygame.draw.lines(screen, color, False, [(int(a), int(b)) for a, b in pts], width)
@@ -420,10 +420,7 @@ class Hoop:
 # =============================================================================
 PHYSICS_DIR = BASE_DIR / "physics"
 
-# The physics team returns positions in **meters** (y-up in their math). Our game uses **meters** with y-down.
-# We treat every model as y-up, center it about its mean, then flip y to y-down.
-
-_FUNC_CACHE: Dict[tuple[str, str], Callable[..., Any]] = {}
+_FUNC_CACHE: Dict[tuple, Callable[..., Any]] = {}
 
 
 def _safe_load_function(py_path: Path, func_name: str) -> Callable[..., Any]:
@@ -455,7 +452,6 @@ def _safe_load_function(py_path: Path, func_name: str) -> Callable[..., Any]:
         elif isinstance(node, ast.ImportFrom):
             if (node.module or "").startswith(banned_prefixes):
                 continue
-            # also drop specific heavy submodules
             if node.module in ("matplotlib.animation",):
                 continue
             new_body.append(node)
@@ -481,61 +477,70 @@ class MotionSpec:
     name: str
     filename: str
     func_name: str
-    # adapter receives the raw return tuple/list and must produce (t, x, y)
-    adapter: Callable[[Any], tuple[Any, Any, Any]]
+    # unpack_fn receives raw return and must produce (t, x_hoop, y_hoop, extra_dict)
+    unpack_fn: Callable[[Any], tuple[Any, Any, Any, Dict[str, Any]]]
     default_kwargs: Dict[str, Any]
 
 
-def _adapt_txy(out):
+# ---------- Unpack functions ----------
+# Each one takes the raw tuple from the physics sim and returns
+# (t, x_hoop, y_hoop, extra_dict) where extra_dict has any auxiliary
+# arrays needed for drawing the rig.
+
+def _unpack_stationary(out):
     t, x, y = out
-    return t, x, y
+    return t, x, y, {}
 
 
-def _adapt_forced(out):
-    t, x, x_wall = out
-    return t, x, x_wall
+def _unpack_simple_pendulum(out):
+    t, x, y = out
+    return t, x, y, {}
 
 
-def _adapt_2D(out):
-    t_eval, x, y, vertical_spring_x, vertical_spring_y, horizontal_spring_x, horizontal_spring_y = out
-    return t_eval, x, y
+def _unpack_2d_springs(out):
+    t_eval, x, y = out[0], out[1], out[2]
+    # out may have velocity components [3..6] that we don't need
+    return t_eval, x, y, {}
 
 
-def _adapt_tx(out):
-    t, x = out
-    # y will be zero; caller will handle
-    return t, x, None
+def _unpack_damped_spring(out):
+    t, x_mass, x_wall = out
+    return t, x_mass, None, {"wall": np.asarray(x_wall)}
 
 
-def _adapt_double_pend(out):
+def _unpack_spring_pendulum(out):
+    t, x, y = out
+    return t, x, y, {}
+
+
+def _unpack_double_pendulum(out):
     t, x1, y1, x2, y2 = out
-    return t, x2, y2
+    return t, x2, y2, {"mid": (np.asarray(x1), np.asarray(y1))}
 
 
-def _adapt_spring_pend(out):
-    t, x, y = out
-    return t, x, y
+def _unpack_horizontal_spring(out):
+    t, x, x_wall = out
+    return t, x, None, {"wall": np.asarray(x_wall)}
 
 
-def _adapt_damped_spring(out):
-    # returns (t, x_mass, x_wall)
-    t, x, _x_wall = out
-    return t, x, None
+def _unpack_three_pendulum(out):
+    # out = (t, x0, x1, x2, ...)
+    t = out[0]
+    x0 = out[1]
+    x1 = out[2]
+    x2 = out[3]
+    return t, x2, None, {"boxes": (np.asarray(x0), np.asarray(x1))}
 
 
-def _adapt_three_pend(out):
-    t, x0, x1, x2 = out[:4]
-    return t, x2, None
+def _unpack_cart(out):
+    t, xc, yc, x_pend, y_pend = out
+    return t, x_pend, y_pend, {"cart": (np.asarray(xc), np.asarray(yc))}
 
 
-def _adapt_cart(out):
-    t, x_cart, y_cart, x_pend, y_pend = out
-    return t, x_pend, y_pend
-
-
-def _adapt_vertical(out):
-    t, x1, x2, total_length = out
-    return t, None, x2
+def _unpack_vertical(out):
+    t, x1, x2 = out[0], out[1], out[2]
+    # Vertical motion only — x2 is the vertical displacement of the hoop mass
+    return t, None, x2, {"bottom": np.asarray(x1)}
 
 
 class MotionManager:
@@ -551,77 +556,76 @@ class MotionManager:
                 name="Horizontal spring",
                 filename="horizontal_spring.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_forced,
+                unpack_fn=_unpack_horizontal_spring,
                 default_kwargs={},
             ),
             MotionSpec(
                 name="Three pendulum",
                 filename="horizontal_three_pend.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_three_pend,
+                unpack_fn=_unpack_three_pendulum,
                 default_kwargs={},
             ),
             MotionSpec(
                 name="Pendulum cart",
                 filename="pendulum_cart.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_cart,
+                unpack_fn=_unpack_cart,
                 default_kwargs={},
             ),
             MotionSpec(
                 name="Vertical double spring",
                 filename="verticle_double_spring.py",
                 func_name="simulate_vertical_2mass",
-                adapter=_adapt_vertical,
+                unpack_fn=_unpack_vertical,
                 default_kwargs={},
             ),
-
             MotionSpec(
                 name="Stationary",
                 filename="stationiary.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_txy,
+                unpack_fn=_unpack_stationary,
                 default_kwargs={},
             ),
             MotionSpec(
                 name="Simple pendulum",
                 filename="simple_pendulum.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_txy,
+                unpack_fn=_unpack_simple_pendulum,
                 default_kwargs={},
             ),
             MotionSpec(
                 name="2D springs",
                 filename="springs_2d.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_2D,
+                unpack_fn=_unpack_2d_springs,
                 default_kwargs={},
             ),
             MotionSpec(
                 name="Driven damped spring (1D)",
                 filename="damped_spring.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_damped_spring,
+                unpack_fn=_unpack_damped_spring,
                 default_kwargs={},
             ),
             MotionSpec(
                 name="Spring pendulum",
                 filename="spring_pendulum.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_spring_pend,
+                unpack_fn=_unpack_spring_pendulum,
                 default_kwargs={},
             ),
             MotionSpec(
                 name="Double pendulum (chaos)",
                 filename="double_pendulum.py",
                 func_name="simulate_pendulum",
-                adapter=_adapt_double_pend,
+                unpack_fn=_unpack_double_pendulum,
                 default_kwargs={},
             ),
         ]
 
-        # Cache of centered (but not amplitude-scaled) base motions: name -> (t, dx0, dy0)
-        self._base_cache: Dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+        # Cache: name -> (t, dx0, dy0, extra)
+        self._base_cache: Dict[str, tuple] = {}
 
     def spec_for_level(self, level: int) -> MotionSpec:
         idx = (max(1, int(level)) - 1) % len(self.specs)
@@ -637,7 +641,6 @@ class MotionManager:
         if "t_max" in sig.parameters:
             kwargs["t_max"] = self.t_max
 
-        # Some signatures use different names (rare). Just ignore unknown kwargs.
         call_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
         return fn(**call_kwargs)
 
@@ -645,56 +648,57 @@ class MotionManager:
         spec = self.spec_for_level(level)
 
         if spec.name not in self._base_cache:
-            out = self._call_sim(spec)
+            raw = self._call_sim(spec)
 
-            # ---------- SYSTEM-SPECIFIC EXTRA DATA ----------
-            extra = {}
+            # Use the spec's dedicated unpack function
+            t, x, y, extra = spec.unpack_fn(raw)
 
-            if spec.name.lower().startswith("double"):
-                t, x1, y1, x2, y2 = out
-                extra["mid"] = (np.asarray(x1), np.asarray(y1))
-                x = x2
-                y = y2
+            t = np.asarray(t, dtype=float)
+            x = np.asarray(x, dtype=float) if x is not None else np.zeros_like(t)
+            y = np.asarray(y, dtype=float) if y is not None else np.zeros_like(t)
 
-            elif spec.name.lower().startswith("horizontal spring"):
-                t, x, wall = out
-                extra["wall"] = np.asarray(wall)
-                y = np.zeros_like(x)
+            # Ensure all arrays have the same length (truncate to shortest)
+            min_len = min(len(t), len(x), len(y))
+            t = t[:min_len]
+            x = x[:min_len]
+            y = y[:min_len]
 
-            elif spec.name.lower().startswith("three"):
-                t, x0, x1, x2 = out[:4]
-                extra["boxes"] = (np.asarray(x0), np.asarray(x1))
-                x = x2
-                y = np.zeros_like(x)
+            # Also truncate extra arrays to match
+            for key, val in extra.items():
+                if isinstance(val, np.ndarray):
+                    extra[key] = val[:min_len]
+                elif isinstance(val, tuple) and len(val) == 2:
+                    a, b = val
+                    if isinstance(a, np.ndarray):
+                        extra[key] = (a[:min_len], b[:min_len] if isinstance(b, np.ndarray) else b)
 
-            elif spec.name.lower().startswith("pendulum cart"):
-                t, x_cart, y_cart, x_pend, y_pend = out
-                extra["cart"] = (np.asarray(x_cart), np.asarray(y_cart))
-                x = x_pend
-                y = y_pend
-
-            elif spec.name.lower().startswith("vertical"):
-                t, x1, x2, total_length = out
-                extra["bottom"] = np.asarray(x1)
-
-                # Vertical motion only
-                x = np.zeros_like(x2)
-                y = np.asarray(x2)
-
-            else:
-                t, x, y = spec.adapter(out)
-
-            t = np.asarray(t, float)
-            x = np.asarray(x, float)
-            y = np.asarray(y, float) if y is not None else np.zeros_like(x)
-
+            # Center about mean, flip y (physics y-up → screen y-down)
             dx_up = x - float(np.mean(x))
             dy_up = y - float(np.mean(y))
 
             dx0 = dx_up
-            dy0 = -dy_up
+            dy0 = -dy_up  # flip for y-down screen coords
 
-            self._base_cache[spec.name] = (t, dx0, dy0, extra)
+            # Center extra arrays too (for drawing relative to base)
+            centered_extra: Dict[str, Any] = {}
+            for key, val in extra.items():
+                if isinstance(val, np.ndarray):
+                    centered_extra[key] = val - float(np.mean(val))
+                elif isinstance(val, tuple) and len(val) == 2:
+                    a, b = val
+                    if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+                        centered_extra[key] = (
+                            a - float(np.mean(a)),
+                            b - float(np.mean(b)),
+                        )
+                    elif isinstance(a, np.ndarray):
+                        centered_extra[key] = (a - float(np.mean(a)), b)
+                    else:
+                        centered_extra[key] = val
+                else:
+                    centered_extra[key] = val
+
+            self._base_cache[spec.name] = (t, dx0, dy0, centered_extra)
 
         t, dx0, dy0, extra = self._base_cache[spec.name]
 
@@ -705,11 +709,23 @@ class MotionManager:
         dx = dx0 * scale
         dy = dy0 * scale
 
-        if "mid" in extra:  # double pendulum
-            mx, my = extra["mid"]
-            extra["mid"] = (mx * scale, my * scale)
+        # Deep copy extra and scale spatial arrays
+        scaled_extra: Dict[str, Any] = {}
+        for key, val in extra.items():
+            if isinstance(val, np.ndarray):
+                scaled_extra[key] = val * scale
+            elif isinstance(val, tuple) and len(val) == 2:
+                a, b = val
+                if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+                    scaled_extra[key] = (a * scale, b * scale)
+                elif isinstance(a, np.ndarray):
+                    scaled_extra[key] = (a * scale, b)
+                else:
+                    scaled_extra[key] = val
+            else:
+                scaled_extra[key] = val
 
-        return t, dx, dy, spec.name, extra
+        return t, dx, dy, spec.name, scaled_extra
 
 
 # Fallback stationary motion if something explodes
@@ -722,15 +738,6 @@ def load_motion_arrays_for_level(level: int, fps: int):
         _DEFAULT_MOTION_MGR = MotionManager(PHYSICS_DIR, fps=fps, t_max=LEVEL_MOTION_T_MAX)
 
     return _DEFAULT_MOTION_MGR.get_level_motion(level)
-
-    # try:
-    return _DEFAULT_MOTION_MGR.get_level_motion(level)
-    # except Exception as e:
-    #     print(f"WARNING: failed to generate motion arrays for level {level}: {e}")
-    #     # 1 second of zeros (but clamp will stop)
-    #     t = np.linspace(0.0, 1.0, int(1.0 * fps))
-    #     z = np.zeros_like(t)
-    #     return t, z, z, "(fallback)"
 
 
 def choose_base_center_m(W: int, H: int, dx_m: np.ndarray, dy_m: np.ndarray) -> Tuple[float, float]:
@@ -884,7 +891,7 @@ class Game:
         self.level = 1
 
         # Trail
-        self.trail = []
+        self.trail: List[Tuple[int, int]] = []
         self.TRAIL_MAX = 28
 
         self.win = False
@@ -955,10 +962,7 @@ class Game:
         return (int(self.m2px(pos_m[0])), int(self.m2px(pos_m[1])))
 
     def _apply_level_motion(self, new_level: int, *, reset_ball: bool = True) -> None:
-        """Switch to the motion model for `new_level`, reset motion index, and keep things on-screen.
-
-        This is called after a SCORE to change the hoop motion model (levels).
-        """
+        """Switch to the motion model for `new_level`, reset motion index, and keep things on-screen."""
         (t, dx_m, dy_m, name, extra) = load_motion_arrays_for_level(new_level, self.FPS)
         self.motion_t, self.motion_dx_m, self.motion_dy_m = t, dx_m, dy_m
         self.motion_name = name
@@ -1069,10 +1073,6 @@ class Game:
                     # Switch hoop motion model for the NEW level, and reset ball + motion
                     self._apply_level_motion(self.level, reset_ball=True)
 
-                elif self.hoop.scored(self.ball):
-                    self.score += 1
-                    # self.win removed for infinite levels
-
                 else:
                     # miss flash (soft)
                     world_w = self.W / self.px_per_m
@@ -1091,28 +1091,28 @@ class Game:
 
             self.accumulator -= self.DT
 
-    def draw_physics_system(game, screen, rim_center_px):
-        name = game.motion_name.lower()
-        i = game.motion_i
-        extra = game.motion_extra
+    def draw_physics_system(self, screen, rim_center_px):
+        name = self.motion_name.lower()
+        i = self.motion_i
+        extra = self.motion_extra
 
-        def to_px(x, y=0):
-            return game.world_to_screen((game.base_center_m[0] + x, game.base_center_m[1] + y))
+        def to_px(x_off, y_off=0):
+            return self.world_to_screen((self.base_center_m[0] + x_off, self.base_center_m[1] + y_off))
 
         # ---------- DOUBLE PENDULUM ----------
         if "double pendulum" in name and "mid" in extra:
             mid_x, mid_y = extra["mid"]
 
             # Height offset in WORLD units (not pixels)
-            world_shift = (game.H * 0.13) / game.px_per_m
+            world_shift = (self.H * 0.13) / self.px_per_m
 
             # Base anchor (physics origin) shifted upward once
             pivot_world = (
-                game.base_center_m[0],
-                game.base_center_m[1] - world_shift
+                self.base_center_m[0],
+                self.base_center_m[1] - world_shift
             )
 
-            pivot_px = game.world_to_screen(pivot_world)
+            pivot_px = self.world_to_screen(pivot_world)
 
             # Middle pendulum relative to that same anchor
             mid_world = (
@@ -1120,7 +1120,7 @@ class Game:
                 pivot_world[1] - mid_y[i]  # physics y-up → screen y-down
             )
 
-            mid_px = game.world_to_screen(mid_world)
+            mid_px = self.world_to_screen(mid_world)
 
             # Draw rods
             aa_line(screen, (0, 0, 0), pivot_px, mid_px, 4)
@@ -1205,8 +1205,8 @@ class Game:
             self.trail.append(ball_px)
             if len(self.trail) > self.TRAIL_MAX:
                 self.trail.pop(0)
-            for i in range(1, len(self.trail)):
-                pygame.draw.line(screen, (140, 160, 200), self.trail[i - 1], self.trail[i], 3)
+            for idx in range(1, len(self.trail)):
+                pygame.draw.line(screen, (140, 160, 200), self.trail[idx - 1], self.trail[idx], 3)
 
         # ball shadow
         shadow_strength = max(0.15, min(0.65, (ball_px[1] / max(self.H, 1))))

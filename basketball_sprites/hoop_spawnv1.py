@@ -55,10 +55,10 @@ def build_hoop_surface(
     for x in range(surf.get_width()):
         for y in range(surf.get_height()):
             pixel = surf.get_at((x, y))
-            rgb = pixel[:3]
+            rgb = (pixel.r, pixel.g, pixel.b)
             for old_rgb, new_rgb in color_map.items():
                 if color_close(rgb, old_rgb, tolerance):
-                    surf.set_at((x, y), (*new_rgb, pixel[3]))
+                    surf.set_at((x, y), pygame.Color(new_rgb[0], new_rgb[1], new_rgb[2], pixel.a))
                     break
     surf.unlock()
 

@@ -27,8 +27,9 @@ class Background:
         ]
 
         # SMALL bows
-        bow_image.set_alpha(128)
-        self.small_bow = pygame.transform.scale(bow_image, (bow_width // 15, bow_height // 15))
+        small_bow_image = bow_image.copy()
+        small_bow_image.set_alpha(128)
+        self.small_bow = pygame.transform.scale(small_bow_image, (bow_width // 15, bow_height // 15))
         self.small_width, self.small_height = self.small_bow.get_size()
         self.small_bows = [
             {"pos": [random.randint(0, width), random.randint(0, height)],

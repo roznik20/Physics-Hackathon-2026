@@ -5,7 +5,7 @@ from matplotlib.animation import FuncAnimation
 # --- Numerical solution and coordinates ---
 import matplotlib.pyplot as plt
 
-def simulate_pendulum(L_val=50, g_val=9.81, theta0=1, omega0=5, t_max=600, fps=60):
+def simulate_pendulum(L_val=3, g_val=9.81, theta0=1, omega0=2, t_max=600, fps=60):
     def f(t, y):
         #theta, omega = y
         theta = y[0]
@@ -23,7 +23,7 @@ def simulate_pendulum(L_val=50, g_val=9.81, theta0=1, omega0=5, t_max=600, fps=6
     y = -L_val * np.cos(theta)
     return t_eval, x, y
 
-'''
+
 t_eval, x, y = simulate_pendulum()
 
 fig, ax = plt.subplots()
@@ -40,7 +40,7 @@ def update(i):
 ani = FuncAnimation(fig, update, frames=len(t_eval), interval=1000/60, blit=True)
 plt.show()
 
-'''
+
 '''
 
 def simulate_mid_bearing_pendulum(L=1.0, m1=2.0, m2=6.0, g=9.81, theta1_0=1, omega1_0=2, theta2_0=1, omega2_0=3, t_max=100, fps=60):
