@@ -191,9 +191,11 @@ def build_hoop_rig(motion_name: str, base_center_m: Tuple[float, float],
         pivot = _clamp_anchor_m((base_center_m[0], base_center_m[1] - L), W, H, px_per_m)
         return HoopRig(kind="spring", anchors_m=[pivot], label="Spring pendulum")
     if "2d springs" in name or "2d spring" in name:
-        left = _clamp_anchor_m((base_center_m[0] - (L + 0.35), base_center_m[1]), W, H, px_per_m)
+        # Physics: horizontal spring from x=+1 (right wall), vertical spring from y=-1 (below).
+        # After the y-flip the vertical anchor appears above on screen.
+        right = _clamp_anchor_m((base_center_m[0] + (L + 0.35), base_center_m[1]), W, H, px_per_m)
         top = _clamp_anchor_m((base_center_m[0], base_center_m[1] - (L + 0.25)), W, H, px_per_m)
-        return HoopRig(kind="springs2d", anchors_m=[left, top], label="2D springs")
+        return HoopRig(kind="springs2d", anchors_m=[right, top], label="2D springs")
     if "damped" in name or "driven" in name:
         left = _clamp_anchor_m((base_center_m[0] - (L + 0.55), base_center_m[1]), W, H, px_per_m)
         return HoopRig(kind="spring_horizontal", anchors_m=[left], label="Driven damped spring")
@@ -244,8 +246,7 @@ def draw_spring(screen: pygame.Surface, p1: Tuple[int, int], p2: Tuple[int, int]
 
 def draw_hoop_rig(screen: pygame.Surface, rig: HoopRig,
                   rim_center_px: Tuple[int, int],
-                  world_to_screen_fn: Callable[[Tuple[float, float]], Tuple[int, int]],
-                  font: pygame.font.Font) -> None:
+                  world_to_screen_fn: Callable[[Tuple[float, float]], Tuple[int, int]]) -> None:
     """
     Render anchors/connectors ONLY for:
         - 2D springs
@@ -258,8 +259,8 @@ def draw_hoop_rig(screen: pygame.Surface, rig: HoopRig,
     if rig is None or rig.kind == "none":
         return
 
-    # Only allow specific rig kinds
-    not_allowed = {"double", "three", "horizontal", "cart", "vertical"}
+    # Systems handled by draw_physics_system — skip here to avoid double-drawing
+    not_allowed = {"double", "three", "horizontal", "cart", "vertical", "damped", "driven"}
 
     name = rig.label.lower()
 
@@ -270,18 +271,6 @@ def draw_hoop_rig(screen: pygame.Surface, rig: HoopRig,
     anchor_col = (35, 35, 35)
     rod_col = (80, 80, 80)
     spring_col = (70, 70, 90)
-
-    # Label near first anchor
-    if rig.anchors_m:
-        a0_px = world_to_screen_fn(rig.anchors_m[0])
-        draw_text(
-            screen,
-            font,
-            f"Rig: {rig.label}",
-            a0_px[0] + 14,
-            a0_px[1] - 22,
-            color=(20, 20, 20),
-        )
 
     # Draw anchors + connectors
     for a_m in rig.anchors_m:
@@ -886,6 +875,12 @@ class Game:
         self.green_fn = pygame.image.load(str(asset_path("green_fn.png"))).convert_alpha()
         self.curry_moonshot = pygame.image.load(str(asset_path("curry_moonshot.png"))).convert_alpha()
 
+        ball_diam = int(self.m2px(0.12) * 2)
+        self.ball_img = pygame.transform.smoothscale(
+            pygame.image.load(str(asset_path("ball.png"))).convert_alpha(),
+            (ball_diam, ball_diam),
+        )
+
         # Score/level
         self.score = 0
         self.level = 1
@@ -943,15 +938,19 @@ class Game:
         # Image flash (overlay)
         self.im_green = False
         self.im_moonshot = False
-        self.flash_start_time = 0
+        self.flash_start_green = 0
+        self.flash_start_moonshot = 0
         self.flash_duration = 1000  # ms
+        self.miss_triggered = False
 
         # Calibration
         self.calibrating = False
         self.cal_top_left = None
 
-        # Background variables
+        # Skip button (temporary, for testing level transitions)
+        self.skip_rect = pygame.Rect(self.W - 120, self.H - 50, 110, 36)
 
+        # Background variables
         self.background = bg.Background(self.W, self.H)
 
     # --- coordinate helpers ---
@@ -998,6 +997,7 @@ class Game:
                 self.ball.attach_to(self.pend)
                 self.trail.clear()
                 self.motion_i = 0
+                self.miss_triggered = False
 
             if event.key == pygame.K_SPACE:
                 if (not self.calibrating) and self.ball.attached:
@@ -1024,6 +1024,12 @@ class Game:
                 self.flash_start_time = pygame.time.get_ticks()
                 # Switch hoop motion model for the NEW level, and reset ball + motion
                 self._apply_level_motion(self.level, reset_ball=True)
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.skip_rect.collidepoint(event.pos):
+                self.level += 1
+                self._apply_level_motion(self.level, reset_ball=True)
+                return "GAME"
 
         if event.type == pygame.MOUSEBUTTONDOWN and self.calibrating and self.cal_top_left is not None:
             mx, my = event.pos
@@ -1068,18 +1074,22 @@ class Game:
                     self.score += 1
                     self.level += 1
                     self.im_green = True
-                    self.flash_start_time = pygame.time.get_ticks()
+                    self.flash_start_green = pygame.time.get_ticks()
 
                     # Switch hoop motion model for the NEW level, and reset ball + motion
                     self._apply_level_motion(self.level, reset_ball=True)
 
                 else:
-                    # miss flash (soft)
+                    # miss flash (soft) — only trigger once per throw
                     world_w = self.W / self.px_per_m
                     world_h = self.H / self.px_per_m
-                    if self.ball.pos[1] > world_h * 0.90 or self.ball.pos[0] < -0.2 or self.ball.pos[0] > world_w + 0.2:
+                    if (not self.miss_triggered and
+                            (self.ball.pos[1] > world_h * 0.90 or
+                             self.ball.pos[0] < -0.2 or
+                             self.ball.pos[0] > world_w + 0.2)):
                         self.im_moonshot = True
-                        self.flash_start_time = pygame.time.get_ticks()
+                        self.flash_start_moonshot = pygame.time.get_ticks()
+                        self.miss_triggered = True
 
                 # hard out-of-bounds reset
                 world_w = self.W / self.px_per_m
@@ -1088,8 +1098,28 @@ class Game:
                     self.pend.t = 0.0
                     self.ball.attach_to(self.pend)
                     self.trail.clear()
+                    self.miss_triggered = False
 
             self.accumulator -= self.DT
+
+    def _draw_wall_v(self, screen, px, half_h=50):
+        """Vertical hatched wall at pixel position px."""
+        x, y = px
+        pygame.draw.rect(screen, (50, 50, 50), (x, y - half_h, 8, half_h * 2))
+        for hy in range(-half_h + 6, half_h, 12):
+            pygame.draw.line(screen, (50, 50, 50), (x, y + hy), (x + 14, y + hy - 10), 2)
+
+    def _draw_ceiling(self, screen, px, half_w=40):
+        """Horizontal hatched ceiling at pixel position px."""
+        x, y = px
+        pygame.draw.rect(screen, (50, 50, 50), (x - half_w, y - 8, half_w * 2, 8))
+        for hx in range(-half_w + 6, half_w, 12):
+            pygame.draw.line(screen, (50, 50, 50), (x + hx, y - 8), (x + hx - 8, y - 20), 2)
+
+    def _draw_mass(self, screen, px, size=10):
+        """Small filled square mass node."""
+        pygame.draw.rect(screen, (30, 30, 30), (px[0] - size, px[1] - size, size * 2, size * 2))
+        pygame.draw.rect(screen, (80, 80, 80), (px[0] - size, px[1] - size, size * 2, size * 2), 2)
 
     def draw_physics_system(self, screen, rim_center_px):
         name = self.motion_name.lower()
@@ -1099,94 +1129,105 @@ class Game:
         def to_px(x_off, y_off=0):
             return self.world_to_screen((self.base_center_m[0] + x_off, self.base_center_m[1] + y_off))
 
+        base_px = self.world_to_screen(self.base_center_m)
+
         # ---------- DOUBLE PENDULUM ----------
         if "double pendulum" in name and "mid" in extra:
             mid_x, mid_y = extra["mid"]
 
-            # Height offset in WORLD units (not pixels)
             world_shift = (self.H * 0.13) / self.px_per_m
-
-            # Base anchor (physics origin) shifted upward once
-            pivot_world = (
-                self.base_center_m[0],
-                self.base_center_m[1] - world_shift
-            )
-
+            pivot_world = (self.base_center_m[0], self.base_center_m[1] - world_shift)
             pivot_px = self.world_to_screen(pivot_world)
 
-            # Middle pendulum relative to that same anchor
-            mid_world = (
-                pivot_world[0] + mid_x[i],
-                pivot_world[1] - mid_y[i]  # physics y-up → screen y-down
-            )
-
+            mid_world = (pivot_world[0] + mid_x[i], pivot_world[1] - mid_y[i])
             mid_px = self.world_to_screen(mid_world)
 
-            # Draw rods
-            aa_line(screen, (0, 0, 0), pivot_px, mid_px, 4)
-            aa_line(screen, (0, 0, 0), mid_px, rim_center_px, 4)
-
-            # Draw joints
-            aa_circle(screen, (0, 0, 0), pivot_px, 6)
-            aa_circle(screen, (0, 0, 0), mid_px, 6)
-
+            self._draw_ceiling(screen, pivot_px)
+            aa_line(screen, (40, 40, 40), pivot_px, mid_px, 4)
+            aa_circle(screen, (30, 30, 30), pivot_px, 6)
+            aa_line(screen, (40, 40, 40), mid_px, rim_center_px, 4)
+            aa_circle(screen, (30, 30, 30), mid_px, 6)
             return
 
         # ---------- HORIZONTAL SPRING ----------
+        # wall (fixed) — spring — mass(hoop), all horizontal
         if "horizontal spring" in name and "wall" in extra:
-            wall_x = extra["wall"][i]
-            wall_px = to_px(wall_x)
-
-            pygame.draw.rect(screen, (40, 40, 40), (wall_px[0] - 10, wall_px[1] - 40, 20, 80))
+            wall_px = to_px(0)   # wall is fixed; centred data is always ≈ 0
+            self._draw_wall_v(screen, wall_px)
             draw_spring(screen, wall_px, rim_center_px)
+            self._draw_mass(screen, rim_center_px)
             return
 
-        # ---------- THREE PENDULUM ----------
+        # ---------- DRIVEN DAMPED SPRING ----------
+        # oscillating wall — spring — mass(hoop), horizontal
+        if "damped" in name and "wall" in extra:
+            wall_x = extra["wall"][i]
+            wall_px = to_px(wall_x)   # wall position oscillates
+            self._draw_wall_v(screen, wall_px)
+            draw_spring(screen, wall_px, rim_center_px)
+            self._draw_mass(screen, rim_center_px)
+            return
+
+        # ---------- THREE PENDULUM (horizontal chain) ----------
+        # fixed-wall — spring — m1 — spring — m2 — spring — hoop, all horizontal
         if "three" in name and "boxes" in extra:
             b1, b2 = extra["boxes"]
-            p1 = to_px(b1[i])
-            p2 = to_px(b2[i])
+            wall_px = to_px(0)       # wall is at the fixed reference
+            p1 = to_px(b1[i])        # first mass
+            p2 = to_px(b2[i])        # second mass
 
-            wall = (p1[0] - 120, p1[1])
-
-            pygame.draw.rect(screen, (40, 40, 40), (wall[0] - 10, wall[1] - 40, 20, 80))
-
-            draw_spring(screen, wall, p1)
-            pygame.draw.rect(screen, (0, 0, 0), (p1[0] - 10, p1[1] - 10, 20, 20))
-
-            draw_spring(screen, p1, rim_center_px)
-
-            draw_spring(screen, rim_center_px, p2)
-            pygame.draw.rect(screen, (0, 0, 0), (p2[0] - 10, p2[1] - 10, 20, 20))
+            self._draw_wall_v(screen, wall_px)
+            draw_spring(screen, wall_px, p1)
+            self._draw_mass(screen, p1)
+            draw_spring(screen, p1, p2)
+            self._draw_mass(screen, p2)
+            draw_spring(screen, p2, rim_center_px)
             return
 
         # ---------- PENDULUM CART ----------
+        # horizontal rail — cart (hoop) — rod — pendulum bob
         if "cart" in name and "cart" in extra:
             cx, cy = extra["cart"]
-            cart_px = to_px(cx[i], -cy[i])
+            bob_px = to_px(cx[i], -cy[i])   # pendulum bob
 
-            pygame.draw.rect(screen, (0, 0, 0), (cart_px[0] - 20, cart_px[1] - 10, 40, 20))
-            aa_line(screen, (0, 0, 0), cart_px, rim_center_px, 4)
+            # rail spans full width at cart height
+            rail_y = rim_center_px[1]
+            pygame.draw.line(screen, (80, 80, 80), (0, rail_y), (self.W, rail_y), 3)
+
+            # cart body
+            cw, ch = 50, 22
+            pygame.draw.rect(screen, (50, 50, 50),
+                             (rim_center_px[0] - cw // 2, rim_center_px[1] - ch // 2, cw, ch))
+            pygame.draw.rect(screen, (90, 90, 90),
+                             (rim_center_px[0] - cw // 2, rim_center_px[1] - ch // 2, cw, ch), 2)
+            # wheels
+            for wx in (-14, 14):
+                pygame.draw.circle(screen, (70, 70, 70),
+                                   (rim_center_px[0] + wx, rim_center_px[1] + ch // 2 + 2), 7)
+                pygame.draw.circle(screen, (120, 120, 120),
+                                   (rim_center_px[0] + wx, rim_center_px[1] + ch // 2 + 2), 7, 2)
+
+            # rod from cart centre to bob
+            aa_line(screen, (40, 40, 40), rim_center_px, bob_px, 4)
+            aa_circle(screen, (30, 30, 30), bob_px, 7)
             return
 
         # ---------- VERTICAL DOUBLE SPRING ----------
+        # ceiling — spring — m1(upper) — spring — hoop(lower mass)
         if "vertical" in name and "bottom" in extra:
-            b = extra["bottom"]
-            bottom_px = to_px(0, -b[i])
+            b = extra["bottom"]           # upper mass deviation
+            m1_px = to_px(0, -b[i])      # upper mass in screen coords
 
-            top = (rim_center_px[0], rim_center_px[1] - 150)
-
-            pygame.draw.rect(screen, (40, 40, 40), (top[0] - 10, top[1] - 40, 20, 80))
-
-            draw_spring(screen, top, rim_center_px)
-            draw_spring(screen, rim_center_px, bottom_px)
-
-            pygame.draw.rect(screen, (0, 0, 0), (bottom_px[0] - 10, bottom_px[1] - 10, 20, 20))
+            # ceiling sits at a fixed position above the base
+            ceil_px = (rim_center_px[0], base_px[1] - 200)
+            self._draw_ceiling(screen, ceil_px)
+            draw_spring(screen, ceil_px, m1_px)
+            self._draw_mass(screen, m1_px)
+            draw_spring(screen, m1_px, rim_center_px)
             return
 
     # --- draw ---
     def draw(self, screen):
-        draw_vertical_gradient(screen, self.W, self.H, self.skytop, self.skybot)
         self.background.draw(screen)
 
         # court strip at bottom
@@ -1194,11 +1235,13 @@ class Game:
         pygame.draw.rect(screen, self.court, (0, court_y, self.W, self.H - court_y))
         pygame.draw.line(screen, self.courtline, (0, court_y), (self.W, court_y), 4)
 
-        # pivot + rod
-        pivot_px = self.world_to_screen(self.pend.pivot)
         ball_px = self.world_to_screen(self.ball.pos)
-        aa_circle(screen, self.black, pivot_px, 6)
-        aa_line(screen, (120, 120, 120), pivot_px, ball_px, width=5)
+
+        # pivot + rod: only visible while ball is still on the pendulum
+        if self.ball.attached:
+            pivot_px = self.world_to_screen(self.pend.pivot)
+            aa_circle(screen, self.black, pivot_px, 6)
+            aa_line(screen, (120, 120, 120), pivot_px, ball_px, width=5)
 
         # trail after release
         if not self.ball.attached and not self.calibrating:
@@ -1217,8 +1260,8 @@ class Game:
         screen.blit(shadow_surf, (ball_px[0] - shadow_w, court_y - shadow_h))
 
         # draw ball
-        aa_circle(screen, self.blue, ball_px, int(self.m2px(self.ball.r)))
-        aa_circle(screen, (240, 240, 255), (ball_px[0] - 6, ball_px[1] - 6), max(2, int(self.m2px(self.ball.r) * 0.35)))
+        ball_r_px = int(self.m2px(self.ball.r))
+        screen.blit(self.ball_img, (ball_px[0] - ball_r_px, ball_px[1] - ball_r_px))
 
         # Hoop drawing via BasketAssembly + HoopSprite
         rim_px = self.world_to_screen(self.hoop_center_m)
@@ -1228,7 +1271,7 @@ class Game:
         # draw physical rig (anchors + strings/springs) so hoop motion is understandable
         if not self.calibrating:
             self.draw_physics_system(screen, rim_center_px)
-            draw_hoop_rig(screen, self.hoop_rig, rim_center_px, self.world_to_screen, self.font)
+            draw_hoop_rig(screen, self.hoop_rig, rim_center_px, self.world_to_screen)
 
         if self.calibrating and self.cal_top_left is not None:
             tlx, tly = self.cal_top_left
@@ -1242,19 +1285,19 @@ class Game:
             self.hoop_sprite.draw(screen, rim_center_px, debug=False)
 
         # HUD
-        draw_text(screen, self.font, f"FPS target={FPS} actual={self.clock.get_fps():.1f}", 20, 18)
-        draw_text(screen, self.font, f"wind_ax={self.wind_ax:.2f} m/s^2", 20, 40)
-        draw_text(screen, self.font, "SPACE=release   R=reset motion+ball   C=calibrate   ESC=menu", 20, 62)
-        draw_text(screen, self.font, f"ball: x={self.ball.pos[0]:.2f} m  y={self.ball.pos[1]:.2f} m", 20, 84)
-        draw_text(screen, self.font, f"hoop: x={self.hoop_center_m[0]:.2f} m  y={self.hoop_center_m[1]:.2f} m", 20, 106)
-        draw_text(screen, self.font, f"motion model: {self.motion_name}", 20, 128)
+        draw_text(screen, self.font, "SPACE=release   R=reset   ESC=menu", 20, 18)
 
         title = self.bigfont.render(f"Score: {self.score}   Level: {self.level}", True, (30, 30, 30))
         screen.blit(title, (self.W - title.get_width() - 20, 16))
 
+        # Skip button (temporary)
+        pygame.draw.rect(screen, (80, 80, 160), self.skip_rect, border_radius=6)
+        skip_surf = self.font.render("SKIP →", True, (255, 255, 255))
+        screen.blit(skip_surf, skip_surf.get_rect(center=self.skip_rect.center))
+
         # overlays
         if self.im_green:
-            elapsed = pygame.time.get_ticks() - self.flash_start_time
+            elapsed = pygame.time.get_ticks() - self.flash_start_green
             alpha = max(255 - 255 * (elapsed / self.flash_duration), 0)
             image_copy = self.green_fn.copy()
             image_copy.set_alpha(int(alpha))
@@ -1263,7 +1306,7 @@ class Game:
                 self.im_green = False
 
         if self.im_moonshot:
-            elapsed = pygame.time.get_ticks() - self.flash_start_time
+            elapsed = pygame.time.get_ticks() - self.flash_start_moonshot
             alpha = max(255 - 255 * (elapsed / self.flash_duration), 0)
             image_copy = self.curry_moonshot.copy()
             image_copy.set_alpha(int(alpha))
@@ -1283,7 +1326,7 @@ def main():
     H = max(600, int(info.current_h * WINDOW_SCALE))
 
     screen = pygame.display.set_mode((W, H))
-    pygame.display.set_caption("Pendulum Basketball (p_v3 + moving hoop + LEVEL motions @ 60 FPS)")
+    pygame.display.set_caption("LeHoop and Ball Game")
 
     menu = Menu(W, H)
     game = Game(W, H)
