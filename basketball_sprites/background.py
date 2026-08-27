@@ -1,6 +1,10 @@
 
 import pygame
 import random
+from pathlib import Path
+
+# assets/ lives at the repo root, one level above this file
+ASSETS = Path(__file__).resolve().parent.parent / "assets"
 
 class Background:
     def __init__(self, width, height):
@@ -9,11 +13,11 @@ class Background:
         self.pink_bg = (255, 207, 249)
 
         # Load images
-        self.background_img = pygame.image.load("assets/background.png").convert_alpha()
+        self.background_img = pygame.image.load(str(ASSETS / "background.png")).convert_alpha()
         self.background_img = pygame.transform.scale(self.background_img, (width, height))
         self.background_img.set_alpha(190)
 
-        bow_image = pygame.image.load("assets/bow2.png").convert_alpha()
+        bow_image = pygame.image.load(str(ASSETS / "bow2.png")).convert_alpha()
         bow_width, bow_height = bow_image.get_size()
 
         # BIG bows
@@ -95,7 +99,7 @@ class Background:
             alpha = random.randint(100, 255)
             color = (255, 255, 255, alpha)
             s = pygame.Surface((glitter["size"], glitter["size"]), pygame.SRCALPHA)
-            pygame.draw.circle(s, color, (glitter["size"]//2, glitter["size"]//2), glitter["size"]//2)
+            pygame.draw.circle(s, color, (glitter["size"]//2, glitter["size"]//2), max(1, glitter["size"]//2))
             screen.blit(s, (glitter["x"], glitter["y"]))
 
         # draw big bows

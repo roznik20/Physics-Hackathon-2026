@@ -1,10 +1,14 @@
-import math
-from scipy.integrate import solve_ivp
-import numpy as np
-from matplotlib.animation import FuncAnimation
+"""Stationary (fixed) hoop: no driving motion.
 
-def simulate_pendulum(t_max=10*60, fps=60):
-    t_eval = np.linspace(0.0, t_max, int(t_max * fps))
-    x = np.linspace(0.0, 0, int(t_max * fps))
-    y = x
+Returned: (t, x, y) both constant at 0. The game treats this as a hoop locked
+to its base position (the classic static target).
+"""
+import numpy as np
+
+
+def simulate(t_max=60.0, fps=60):
+    n = int(t_max * fps)
+    t_eval = np.linspace(0.0, t_max, n)
+    x = np.zeros(n)
+    y = np.zeros(n)
     return t_eval, x, y

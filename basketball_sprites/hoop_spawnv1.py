@@ -27,7 +27,10 @@ def build_hoop_surface(
     base_dir = Path(__file__).resolve().parent
     p = Path(image_path)
     if not p.is_absolute():
-        p = base_dir / p
+        candidate = base_dir / p
+        if not candidate.exists():
+            candidate = base_dir.parent / p  # assets/ lives at the repo root
+        p = candidate
 
     hoop_image = pygame.image.load(str(p)).convert_alpha()
     width, height = hoop_image.get_size()

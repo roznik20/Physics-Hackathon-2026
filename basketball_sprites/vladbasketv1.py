@@ -21,7 +21,10 @@ from dataclasses import dataclass, field
 import math
 import pygame
 
-from basketball_sprites.hoop_spawnv1 import HoopSprite
+try:
+    from basketball_sprites.hoop_spawnv1 import HoopSprite
+except ImportError:  # running this file directly as a script
+    from hoop_spawnv1 import HoopSprite
 
 
 # =============================================================================
