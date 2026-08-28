@@ -37,9 +37,9 @@ def draw_hud(screen, game, W, H):
     controls = font.render("SPACE release    R reset    P pause    M menu", True, C["ink_soft"])
     screen.blit(controls, (18, H - controls.get_height() - 14))
 
-    # bottom-right: launcher amplitude
+    # bottom-right: hoop motion amplitude
     amp = getattr(game.motion, "target_amp", 0.0)
-    amp_txt = font.render(f"launcher amp {amp:.2f} m", True, C["ink_soft"])
+    amp_txt = font.render(f"hoop motion {amp:.2f} m", True, C["ink_soft"])
     screen.blit(amp_txt, (W - amp_txt.get_width() - 18, H - amp_txt.get_height() - 14))
 
     # pause overlay

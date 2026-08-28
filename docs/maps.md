@@ -5,19 +5,28 @@ its levels in sequence — exactly the built‑in ladder, but authored by you. R
 live in `maps/` as `<name>.json`. A file may hold a single level *or* a run
 (`{"levels": [...]}`); both are accepted.
 
+The **ball launcher** (the simple pendulum) is the same on every level — you only
+place it once. Each level then chooses the **physics system that drives the
+hoop** and where that hoop's motion is centered.
+
 ## Build one in the editor
 
 `Map Gallery → + New map`. In the editor:
 
-- **System** — pick the launcher (the 10 systems).
-- **Drag the `LAUNCHER` and `HOOP` markers** in the right panel to place them
-  (positions are stored as screen fractions `0..1`).
-- **Sliders** — `Amplitude` (0.2–2.2 m, how hard the launcher throws),
-  `Gravity` (1–20 m/s²), `Ball size` (0.05–0.30 m).
+- **System** — pick the hoop's driving system (the 10 systems).
+- **Drag the `LAUNCHER` marker** (the pendulum's pivot, upper‑left) and the
+  `HOOP` marker (the hoop's base center, right) to place them. Positions are
+  stored as screen fractions `0..1`.
+- **Sliders** — `Amplitude` (0.2–2.2 m, how far the hoop swings), `Gravity`
+  (1–20 m/s², affects the ball's arc), `Ball size` (0.05–0.30 m).
 - **Test** — play the level right away. **Save** — write it to `maps/`. **Back** —
   return to the gallery.
 
 A red `! <problem>` line under the panel lists any validation failure.
+
+> The `HOOP` marker sets the **base center** of the hoop's motion; the game then
+> clamps the *whole* apparatus (ceiling/floor/anchors included) so it stays on
+> screen around that center.
 
 ## JSON schema
 
@@ -27,8 +36,8 @@ A single level:
 {
   "name": "my_level",
   "system": "double_pendulum",
-  "launcher": [0.22, 0.46],
-  "hoop":     [0.68, 0.44],
+  "launcher": [0.20, 0.16],
+  "hoop":     [0.60, 0.66],
   "amp_m": 0.8,
   "ball_radius_m": 0.12,
   "gravity": 9.81
@@ -52,10 +61,10 @@ A run (multiple levels, played in order):
 | Field | Type | Meaning | Range |
 |-------|------|---------|-------|
 | `name` | str | display name | any |
-| `system` | str | launcher system id | see table below |
-| `launcher` | [x, y] | launcher screen fraction | each `0..1` |
-| `hoop` | [x, y] | hoop screen fraction | each `0..1` |
-| `amp_m` | float | launcher peak displacement (m) | `0.05..3.0` |
+| `system` | str | hoop‑driving system id | see table below |
+| `launcher` | [x, y] | pendulum‑pivot screen fraction | each `0..1` |
+| `hoop` | [x, y] | hoop base‑center screen fraction | each `0..1` |
+| `amp_m` | float | hoop peak displacement (m) | `0.05..3.0` |
 | `ball_radius_m` | float | ball radius (m) | `0.03..0.4` |
 | `gravity` | float | gravity (m/s²) | `1..25` |
 
@@ -71,22 +80,24 @@ window size.
 
 ## Tips for interesting levels
 
-- **Higher `amp_m`** → the launcher throws harder; pair with a farther/higher hoop.
-- **Low `gravity`** (e.g. 3) → floaty, long arcs; **high** (e.g. 18) → steep drops.
-- Place the **hoop low and far right** with a high‑amplitude chaotic system for a
-  hard mode; place it **near the launcher** for an easy warm‑up.
+- **Higher `amp_m`** → the hoop swings harder (a faster, wider‑moving target).
+  Pair with a farther hoop for a hard challenge.
+- **Low `gravity`** (e.g. 3) → floaty, long ball arcs; **high** (e.g. 18) → steep
+  drops. Gravity only affects the ball's flight, not the hoop.
+- Place the **hoop low and far right** with a high‑amplitude chaotic system (e.g.
+  the double pendulum) for a hard mode; place it **near the launcher** for an
+  easy warm‑up.
 - A run of mixed systems is a mini‑campaign; `stationiary` is a fixed‑hoop
-  baseline (the ball starts at rest, so you rely on the release velocity).
+  baseline (the hoop doesn't move, so you rely purely on the release).
 
 ## Programmatic API
 
 ```python
 from game.maps import MapLevel, save_run, load_run
 from game.config import MAP_DIR
-import pathlib
 
 lv = MapLevel(name="hard", system="double_pendulum",
-              launcher=(0.20, 0.50), hoop=(0.80, 0.35),
+              launcher=(0.20, 0.16), hoop=(0.60, 0.66),
               amp_m=1.1, ball_radius_m=0.10, gravity=9.81)
 save_run("my_run", [lv], MAP_DIR)          # writes maps/my_run.json
 levels = load_run("my_run", MAP_DIR)       # -> [MapLevel]

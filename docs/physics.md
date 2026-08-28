@@ -1,10 +1,14 @@
 # The physics
 
-Every launcher is a genuine mechanical system integrated from its **equations of
+Every **goal** is a genuine mechanical system integrated from its **equations of
 motion** with `scipy.integrate.solve_ivp` (`rtol=1e-8, atol=1e-10`). The solvers
 return plain numpy arrays in a **y‑UP** frame with the system's natural origin at
 `(0, 0)`; the game layer (see `architecture.md`) re‑centers, re‑scales, and
 y‑flips them into the on‑screen world frame. No system is hand‑animated.
+
+In the game the **ball** hangs on a separate simple pendulum (the launcher), and
+the **hoop rides the driven (free) node** of the system described here. So each
+system below is the *moving target* the ball must be timed against.
 
 > Convention: `theta` is measured from the **downward vertical**, so `y = -L
 > cos(theta) < 0` while a pendulum hangs down. `ω = theta'`.
@@ -25,7 +29,7 @@ x'' = -(k/m) x
 ```
 
 Default `x0=0.5, m=2, k=6`. Returns `(t, x_mass, x_wall)` (`x_wall` constant).
-Rendered as a wall + zig‑zag spring + mass; the ball rides the mass.
+Rendered as a wall + zig‑zag spring + mass; the **hoop rides the mass**.
 
 ## 2 · Spring pendulum (elastic pendulum) — `spring_pendulum.py`
 
@@ -38,7 +42,8 @@ r''   = r θ'² - (k/m)(r - L0) + g cos θ
 ```
 
 Default `m=1, k=20, L0=1, r0=1.1, θ0=1, r'=1, θ'=2`. Returns `(t, x, y)`.
-The free end (mass) carries the ball; the spring visibly stretches *and* swings.
+The free end (mass) carries the **hoop**; the spring visibly stretches *and*
+swings.
 
 ## 3 · Pendulum cart — `pendulum_cart.py`
 
@@ -54,7 +59,7 @@ x'' = -(m2 r/(m1+m2)) [ θ'' cosθ - ω² sinθ ]
 The game sets the initial cart velocity `v` so total horizontal momentum ≈ 0,
 which keeps the free cart bounded (otherwise it drifts off forever). Returns
 `(t, x_pend, y_pend, x_cart, y_cart)`. Rendered as a rail + wheeled cart + rod +
-bob (the bob, not the cart, is the driven node the ball rides).
+bob (the bob, not the cart, is the driven node the **hoop** rides).
 
 ## 4 · 3‑mass horizontal spring chain — `horizontal_three_pend.py`
 
@@ -68,8 +73,8 @@ F3 = -k3 e3
 ```
 
 Default `m=2, k=15, L=0.10`, `x10=-0.05`. Returns `(t, x1, x2, x3, x_wall)`.
-The **last** mass `m3` is the driven node. Rendered as a wall + three springs +
-three masses.
+The **last** mass `m3` is the driven node and carries the **hoop**. Rendered as a
+wall + three springs + three masses.
 
 ## 5 · Driven, damped spring — `damped_spring.py`
 
@@ -84,6 +89,7 @@ x'' = -(b/m) x' - (k/m)(x - x_eq(t))
 Default `b=0.1, ω=3, d=0.3, m=2, k=8`. Returns `(t, x_mass, x_wall)` with
 `x_wall = x_eq` (so the wall is *drawn moving*). This is the one system whose
 support is explicitly time‑driven — resonance/forced response is the whole idea.
+The driven mass carries the **hoop**.
 
 ## 6 · Double pendulum (chaotic) — `double_pendulum.py`
 
@@ -95,14 +101,14 @@ downward vertical, `δ = θ2 - θ1`):
        / [ (m1+m2) L1 - m2 L1 cos²δ ]
 
 θ2'' = [ -m2 L2 ω2² sinδ cosδ + (m1+m2)( g sinθ1 cosδ - L1 ω1² sinδ - g sinθ2 ) ]
-       / [ (L2/L1) · ((m1+m2) L1 - m2 L1 cos²δ) ]
+       / [ (L2/L1) · ((m1+m2) L1 - m2 L1 cos²δ ) ]
 ```
 
 Positions `x1 = L1 sinθ1, y1 = -L1 cosθ1; x2 = x1 + L2 sinθ2, y2 = y1 - L2 cosθ2`.
 Default `m1=2, m2=1, L1=1.2, L2=1, θ1=1, ω1=-2, θ2=-2, ω2=1`. Returns
-`(t, x1, y1, x2, y2)`. The second bob (free end) carries the ball; both bobs and
-the hatched ceiling pivot are drawn. Sensitive initial conditions ⇒ the launcher
-trajectory is genuinely chaotic.
+`(t, x1, y1, x2, y2)`. The second bob (free end) carries the **hoop**; both bobs
+and the hatched ceiling pivot are drawn. Sensitive initial conditions ⇒ the goal
+trajectory is genuinely chaotic (the hardest level to time).
 
 ## 7 · 2‑D springs — `springs_2d.py`
 
@@ -116,7 +122,7 @@ y'' = -(k_y/m) y
 
 Default `x0=0.3, y0=0.6, m=2, k_x=4, k_y=6`. Returns `(t, x, y)`. Rendered with a
 horizontal spring from a wall and a vertical spring from a ceiling meeting at the
-mass — the ball rides the mass (the only system where the launcher moves in both
+mass — the **hoop** rides the mass (the only system where the goal moves in both
 axes).
 
 ## 8 · Simple pendulum — `simple_pendulum.py`
@@ -128,11 +134,11 @@ Rigid rod, point mass, full (non‑small‑angle) dynamics:
 ```
 
 Default `L=3, θ0=1, ω0=2`. Returns `(t, x, y)` with `x = L sinθ, y = -L cosθ`.
-Drawn as a hatched ceiling pivot + rod + bob (the bob carries the ball).
+Drawn as a hatched ceiling pivot + rod + bob (the bob carries the **hoop**).
 
 ## 9 · Vertical 2‑mass spring stack — `verticle_double_spring.py`
 
-`ceiling – s1 – m1 – s2 – m2 – s3 – floor`, a vertical 2‑DOF spring chain.
+`floor – s1 – m1 – s2 – m2 – s3 – ceiling`, a vertical 2‑DOF spring chain.
 Positions `x1, x2` measured upward from the floor (`total_length = L1+L2+L3`):
 
 ```
@@ -143,9 +149,12 @@ F1 = -k1 e1 + k2 e2 - m1 g
 F2 = -k2 e2 + k3 e3 - m2 g
 ```
 
-Default `m1=1, m2=1.3, k1=15, k2=20, k3=20, L1=2.3, L2=1.7, L3=1`. Returns
-`(t, x1, x2, total_length)`. The **lower** mass `m2` is the driven node. Rendered
-as ceiling → spring → mass → spring → mass → floor.
+From these extensions, `x1` is the **lower** mass (spring 1 runs floor→m1) and
+`x2` the **upper** mass (spring 3 runs ceiling→m2), so the physical stack is
+`floor → m1 → m2 → ceiling`. Default `m1=1, m2=1.3, k1=15, k2=20, k3=20,
+L1=0.7, L2=0.6, L3=0.4`. Returns `(t, x1, x2, total_length)`. The **lower** mass
+`m1` is the driven node and carries the **hoop**. Rendered as
+ceiling → spring → mass → spring → mass → floor, all on screen.
 
 ## 10 · Stationary — `stationiary.py`
 
@@ -155,7 +164,7 @@ maps). *(Filename keeps the original typo.)*
 
 ---
 
-## How a raw sim becomes a launcher
+## How a raw sim becomes a moving goal
 
 `physics/apparatus.py` holds one **builder** per system. Each:
 
@@ -163,11 +172,12 @@ maps). *(Filename keeps the original typo.)*
 2. re‑centers them to their mean,
 3. names the nodes (`pivot`, `bob`, `cart`, `mass1..3`, `wall`, `ceiling`, …),
 4. declares the **fixed** nodes (anchors), the **driven** node (the free end the
-   ball rides), and the **connectors** (`rod` / `spring` / `rail`),
+   **hoop** rides), and the **connectors** (`rod` / `spring` / `rail`),
 5. returns a `MotionResult`.
 
-`Motion` (`game/motion.py`) then re‑scales the driven node to the level's target
-amplitude, y‑flips to the world frame, and anchors the mean at the launcher's
-screen position. `Launcher` (`game/bodies.py`) exposes `bob_pos()` / `bob_vel()`
-each frame; on release the ball inherits that velocity — "release a pendulum
-bob", generalized to every system.
+`Motion` (`game/motion.py`) then re‑scales the whole apparatus so it fits on
+screen, y‑flips to the world frame, and anchors it at the hoop's base center.
+`HoopRig` (`game/bodies.py`) exposes the driven node's world position each frame
+as the hoop's rim; `choose_hoop_base` places the whole envelope on screen. The
+ball, meanwhile, is independent — it hangs on the simple pendulum launcher and is
+released by the player.

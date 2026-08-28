@@ -30,11 +30,12 @@ BASE_LAUNCHER_AMP_M = 0.55
 AMP_PER_LEVEL_M = 0.06
 MAX_LAUNCHER_AMP_M = 1.30
 
-# Where the launcher root (driven-node mean) and the hoop sit, as fractions of
-# the screen. The hoop is on the right, the launcher on the left, so a release
-# sends the ball rightward toward the hoop.
-LAUNCHER_FRAC = (0.22, 0.46)
-HOOP_FRAC = (0.68, 0.44)
+# Where the launcher (pendulum pivot) and the hoop base center sit, as fractions
+# of the screen. The pendulum hangs upper-left; the hoop is on the right, at the
+# height the ball's descending arc passes through it (verified reachable on all
+# 10 systems). The hoop's motion (driven node) is clamped on-screen around this.
+LAUNCHER_FRAC = (0.20, 0.16)
+HOOP_FRAC = (0.60, 0.66)
 HOOP_POLE_HEIGHT_M = 2.4   # pole length below the rim (meters)
 
 # Motion precompute window (seconds) per level

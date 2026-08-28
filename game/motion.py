@@ -35,21 +35,29 @@ class Motion:
         self.label = mr.label
 
         # --- scale: fit the driven node to the target amplitude, but never let
-        # the whole apparatus reach the hoop or leave the left half. ---
+        # the whole apparatus reach the hoop, leave the left half, or overflow
+        # the screen vertically. ---
         mean = mr.points[mr.driven].mean(axis=0)
         d_off = mr.points[mr.driven] - mean
         max_abs = float(max(np.max(np.abs(d_off)), 1e-9))
         scale_amp = target_amp / max_abs
 
-        # horizontal spread of ALL nodes (offset space)
+        # spread of ALL nodes (offset space)
         allx = np.concatenate([p[:, 0] for p in mr.points.values()])
+        ally = np.concatenate([p[:, 1] for p in mr.points.values()])
         hspread = float(allx.max() - allx.min())
-        # available horizontal room: from left margin to ~72% of the hoop x
+        vspread = float(ally.max() - ally.min())
+        # available room: horizontal from left margin to ~72% of the hoop x;
+        # vertical is the same placeable height that choose_hoop_base uses
+        # (window minus its top/bottom margins), so the apparatus is scaled to
+        # fit exactly where it will actually be centered.
         margin = 24.0 / PX_PER_M
         avail_w = (hoop_frac[0] - 0.07) * (W / PX_PER_M) - margin * 2
-        scale_fit = avail_w / max(hspread, 1e-6)
+        avail_h = (H - 150) / PX_PER_M   # matches choose_hoop_base margins
+        scale_fit_w = avail_w / max(hspread, 1e-6)
+        scale_fit_h = avail_h / max(vspread, 1e-6)
 
-        self.scale = float(min(scale_amp, scale_fit, 1.6))
+        self.scale = float(min(scale_amp, scale_fit_w, scale_fit_h, 1.6))
         self.target_amp = float(target_amp)
 
         # World-frame (y-down) offsets, relative to the driven node's mean.

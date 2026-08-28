@@ -6,6 +6,8 @@ __pycache__/
 
 # dev / verification artifacts (kept, but not committed by default)
 _dev/renders/
+_dev/renders2/
+_dev/renders3/
 _dev/_smoke/
 _dev/_baseline/
 _dev/_hoop_surf*.png

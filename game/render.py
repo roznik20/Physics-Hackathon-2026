@@ -125,17 +125,18 @@ def _node_style(name: str) -> str:
     return _NODE_STYLE.get(name, "mass")
 
 
-def draw_apparatus(screen, launcher, px_per_m: float = PX_PER_M,
-                   ball_attached: bool = True) -> Dict[str, Tuple[int, int]]:
-    """Draw every node and connector of the launcher apparatus in screen coords.
+def draw_apparatus(screen, rig, px_per_m: float = PX_PER_M,
+                   ball_attached: bool = True, driven_is_hoop: bool = False) -> Dict[str, Tuple[int, int]]:
+    """Draw every node and connector of the physics apparatus in screen coords.
 
-    When the ball has been released, a faint ghost ring marks the free end (bob)
-    so the apparatus reads as complete even while the ball is in flight.
-    Returns a dict of node-name -> screen-px.
+    ``rig`` exposes ``.motion``, ``.idx`` and ``.root`` (the launcher *or* the
+    hoop rig). When ``driven_is_hoop`` the driven (free) node is the hoop rim, so
+    no ghost/ball marker is drawn there (the hoop sprite is drawn separately on
+    top). Returns a dict of node-name -> screen-px.
     """
-    motion = launcher.motion
-    i = int(np.clip(launcher.idx, 0, motion.n - 1))
-    root = launcher.root
+    motion = rig.motion
+    i = int(np.clip(rig.idx, 0, motion.n - 1))
+    root = rig.root
     px = px_per_m
 
     screen_nodes: Dict[str, Tuple[int, int]] = {}
@@ -164,6 +165,9 @@ def draw_apparatus(screen, launcher, px_per_m: float = PX_PER_M,
         style = _node_style(name)
         p = screen_nodes[name]
         if style == "ball":
+            is_driven = (name == motion.mr.driven)
+            if driven_is_hoop and is_driven:
+                continue  # the hoop sprite is drawn on top of this node
             if not ball_attached:
                 # ghost ring at the free end while the ball is in flight
                 pygame.draw.circle(screen, C["accent"], p, 9, 2)
@@ -238,3 +242,27 @@ def draw_trail(screen, trail: List[Tuple[int, int]]):
         f = idx / max(1, len(trail))
         col = (int(150 + 90 * f), int(120 + 40 * f), int(120))
         pygame.draw.line(screen, col, a, b, max(1, int(3 * f)))
+
+
+def draw_pendulum(screen, pend, px_per_m: float = PX_PER_M,
+                  ball_attached: bool = True, court_y_frac=0.78, H=800):
+    """The launcher: a small hatched ceiling mount + rod to the bob.
+
+    The bob is the ball (drawn separately) when attached; otherwise a ghost ring
+    marks the release point.
+    """
+    px = px_per_m
+    pivot = world_to_screen(tuple(pend.pivot), px)
+    bob = world_to_screen(tuple(pend.bob_pos()), px)
+
+    # ceiling mount above the pivot
+    _hatch(screen, C["anchor"], pivot[0], pivot[1] - 12, 34, vertical=False)
+    # rod
+    _line(screen, C["rod"], pivot, bob, width=6)
+    # pivot hub
+    _aa_circle(screen, C["mass"], pivot[0], pivot[1], 6)
+    _aa_circle(screen, C["panel"], pivot[0], pivot[1], 2)
+
+    if not ball_attached:
+        # ghost release point
+        pygame.draw.circle(screen, C["accent"], bob, 9, 2)

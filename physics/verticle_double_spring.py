@@ -12,10 +12,10 @@ from scipy.integrate import solve_ivp
 
 def simulate(m1=1.0, m2=1.3,
              k1=15.0, k2=20.0, k3=20.0,
-             L1=2.3, L2=1.7, L3=1.0,
+             L1=0.7, L2=0.6, L3=0.4,
              g=9.81,
-             x10=1.0, x20=3.0,
-             v10=2.0, v20=-2.3,
+             x10=1.0, x20=1.6,
+             v10=1.0, v20=-1.0,
              t_max=60.0, fps=60):
     total_length = L1 + L2 + L3
 

@@ -27,31 +27,45 @@ class Menu:
     def __init__(self, W, H, screen):
         self.W, self.H, self.screen = W, H, screen
         self.font = pygame.font.SysFont("consolas", 18)
-        self.title = pygame.font.SysFont("consolas", 46, bold=True)
-        self.sub = pygame.font.SysFont("consolas", 15)
-        self.btn_font = pygame.font.SysFont("consolas", 22, bold=True)
+        self.title_font = pygame.font.SysFont(None, 72)
+        self.sub = pygame.font.SysFont("consolas", 17)
+        self.btn_font = pygame.font.SysFont("consolas", 24, bold=True)
+
+        # the original backdrop: bliss photo + LeBron, both scaled to fill
+        self.bliss = pygame.image.load("assets/bliss.jpg").convert()
+        self.lebron = pygame.image.load("assets/lebron.png").convert_alpha()
+        self.bliss = self._cover(self.bliss, W, H)
+        self.lebron = self._cover(self.lebron, W, H)
+        self.title = self.title_font.render("LeHoop and Ball Game", True, (10, 10, 10))
 
         cx = W // 2
-        self.play = Button(pygame.Rect(cx - 130, H // 2 - 10, 260, 58), "Play", self.btn_font)
-        self.maps = Button(pygame.Rect(cx - 130, H // 2 + 58, 260, 58), "Map Gallery", self.btn_font)
-        self.about = Button(pygame.Rect(cx - 130, H // 2 + 126, 260, 58), "How to Play", self.btn_font)
-        self.quit = Button(pygame.Rect(cx - 130, H // 2 + 194, 260, 46), "Quit", self.btn_font,
-                          bg=(96, 100, 112), hover=(116, 120, 132))
+        top = H // 2 - 20
+        self.play = Button(pygame.Rect(cx - 150, top, 300, 60), "Play", self.btn_font,
+                          bg=(255, 153, 204), hover=(218, 112, 214))
+        self.maps = Button(pygame.Rect(cx - 150, top + 72, 300, 60), "Map Gallery", self.btn_font,
+                          bg=(255, 153, 204), hover=(218, 112, 214))
+        self.about = Button(pygame.Rect(cx - 150, top + 144, 300, 60), "How to Play", self.btn_font,
+                          bg=(255, 153, 204), hover=(218, 112, 214))
+        self.quit = Button(pygame.Rect(cx - 150, top + 216, 300, 48), "Quit", self.btn_font,
+                          bg=(200, 120, 170), hover=(170, 96, 150))
+
+    @staticmethod
+    def _cover(img, W, H):
+        w, h = img.get_size()
+        scale = max(W / w, H / h)
+        return pygame.transform.scale(img, (int(w * scale), int(h * scale)))
 
     def draw(self):
         s = self.screen
-        # gradient backdrop
-        s.fill(C["sky_top"])
-        for y in range(self.H):
-            t = y / max(1, self.H - 1)
-            col = tuple(int(C["sky_top"][i] + (C["sky_bot"][i] - C["sky_top"][i]) * t) for i in range(3))
-            pygame.draw.line(s, col, (0, y), (self.W, y))
-        # title
-        t = self.title.render("Physics Hoop", True, C["ink"])
-        s.blit(t, t.get_rect(center=(self.W // 2, self.H // 2 - 120)))
-        sub = self.sub.render("Lagrangian-powered launcher  ·  hit the moving goal", True, C["ink_soft"])
-        s.blit(sub, sub.get_rect(center=(self.W // 2, self.H // 2 - 82)))
-
+        s.blit(self.bliss, (0, 0))
+        s.blit(self.lebron, (0, 0))
+        s.blit(self.title, self.title.get_rect(center=(self.W // 2, 70)))
+        sub = self.sub.render("Time your release off the pendulum  ·  sink the moving goal", True, (20, 20, 20))
+        s.blit(sub, sub.get_rect(center=(self.W // 2, 116)))
+        # a soft panel behind the buttons for readability
+        panel = pygame.Surface((360, 320), pygame.SRCALPHA)
+        panel.fill((255, 255, 255, 150))
+        s.blit(panel, panel.get_rect(center=(self.W // 2, self.H // 2 + 40)))
         for b in (self.play, self.maps, self.about, self.quit):
             b.draw(s)
 
@@ -85,17 +99,18 @@ class About:
         title = self.big.render("How to Play", True, C["ink"])
         s.blit(title, (30, 26))
         lines = [
-            "The ball hangs on the free end of a real Lagrangian system on the",
-            "left (pendulum, double pendulum, spring-mass, cart, ...). Each level",
-            "uses a different system. The hoop on the right is a fixed, mounted",
-            "goal. Time your release so the ball's velocity sends it through the",
+            "The ball hangs on a simple PENDULUM on the left. On the right, the",
+            "HOOP rides a real Lagrangian/Newton system (pendulum, double",
+            "pendulum, spring-mass, cart, ...) that swings it around as a",
+            "moving target. Each level uses a different system, with bigger",
+            "motion as you climb.",
             "",
-            "  SPACE   release the ball at the current instant",
+            "  SPACE   release the ball off the pendulum at that instant",
             "  R       re-attach the ball (reset this shot)",
             "  P       pause        M  back to menu",
             "",
-            "Score by passing the ball through the rim. Every point advances the",
-            "run to the next level. Build your own runs in the Map Gallery.",
+            "Time your release so the ball's arc meets the rim where it will",
+            "be. Score to advance the run. Build your own in the Map Gallery.",
         ]
         y = 92
         for ln in lines:

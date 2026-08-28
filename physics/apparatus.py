@@ -223,12 +223,15 @@ def build_stationary(out) -> MotionResult:
 def build_vertical_double_spring(out) -> MotionResult:
     t, x1, x2, total_length = out
     n = len(t)
+    # From the equations: x1 is the LOWER mass (spring 1 runs floor→m1, e1=x1-L1)
+    # and x2 is the UPPER mass (spring 3 runs ceiling→m2, e3=(total_length-x2)-L3).
+    # So the physical stack is  floor → s1 → m1 → s2 → m2 → s3 → ceiling.
     m1, m2 = _mean(x1), _mean(x2)
     a1 = _amp(x1, np.zeros(n))
     a2 = _amp(x2, np.zeros(n))
     # ceiling fixed ABOVE the upper mass; floor fixed BELOW the lower mass
-    ceil_y = _fixed_at(m1, a1 + 0.5, n)
-    floor_y = _fixed_at(m2, -(a2 + 0.5), n)
+    ceil_y = _fixed_at(m2, a2 + 0.5, n)
+    floor_y = _fixed_at(m1, -(a1 + 0.5), n)
     mass1 = np.column_stack([np.zeros(n), x1])
     mass2 = np.column_stack([np.zeros(n), x2])
     ceil = np.column_stack([np.zeros(n), ceil_y])
@@ -237,8 +240,9 @@ def build_vertical_double_spring(out) -> MotionResult:
         name="vertical_double_spring", label="Vertical 2-mass springs", short="V. springs",
         t=t,
         points={"mass1": mass1, "mass2": mass2, "ceiling": ceil, "floor": floor},
-        fixed=["ceiling", "floor"], driven="mass2",
-        connectors=[("ceiling", "mass1", "spring"), ("mass1", "mass2", "spring")],
+        fixed=["ceiling", "floor"], driven="mass1",
+        connectors=[("ceiling", "mass2", "spring"), ("mass2", "mass1", "spring"),
+                    ("mass1", "floor", "spring")],
         anchors=[("ceiling", "ceiling"), ("floor", "floor")],
     )
 
@@ -286,7 +290,7 @@ SYSTEMS: List[System] = [
            {"L": 1.3, "theta0": 0.9, "omega0": 2.0}),
     System("vertical_double_spring", "Vertical 2-mass springs", "V. springs",
            "verticle_double_spring", "simulate", build_vertical_double_spring,
-           {"x10": 1.0, "x20": 3.0, "v10": 2.0, "v20": -2.3}),
+           {"x10": 1.0, "x20": 1.7, "v10": 1.0, "v20": -1.0}),
     System("stationary", "Stationary (fixed)", "Static",
            "stationiary", "simulate", build_stationary, {}),
 ]
