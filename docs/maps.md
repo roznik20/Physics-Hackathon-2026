@@ -11,14 +11,21 @@ hoop** and where that hoop's motion is centered.
 
 ## Build one in the editor
 
-`Map Gallery → + New map`. In the editor:
+`Map Gallery → + New map`. The editor has a control panel on the left and a
+**live WYSIWYG preview on the right** — the actual game scene (background, the
+pendulum launcher, and the apparatus carrying the hoop) rendered exactly as the
+game will show it, scaled down. Place things *while watching* where the hoop
+really swings. In the editor:
 
-- **System** — pick the hoop's driving system (the 10 systems).
+- **System** — pick the hoop's driving system (the 10 systems); the preview
+  rebuilds instantly to show that apparatus.
 - **Drag the `LAUNCHER` marker** (the pendulum's pivot, upper‑left) and the
   `HOOP` marker (the hoop's base center, right) to place them. Positions are
-  stored as screen fractions `0..1`.
+  stored as **window fractions** `0..1` — the same coordinates the game uses, so
+  what you place is what you get.
 - **Sliders** — `Amplitude` (0.2–2.2 m, how far the hoop swings), `Gravity`
-  (1–20 m/s², affects the ball's arc), `Ball size` (0.05–0.30 m).
+  (1–20 m/s², affects the ball's arc), `Ball size` (0.05–0.30 m). The preview
+  updates live.
 - **Test** — play the level right away. **Save** — write it to `maps/`. **Back** —
   return to the gallery.
 
