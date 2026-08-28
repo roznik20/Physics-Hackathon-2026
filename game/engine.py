@@ -21,7 +21,7 @@ from .config import (G, HOOP_FRAC, MOTION_T_MAX, PX_PER_M, C, BALL_RADIUS_M,
                      MAP_DIR)
 from .motion import Motion, launcher_amp_for_level
 from .render import (draw_apparatus, draw_background, draw_ball, draw_hoop,
-                     draw_pendulum, draw_trail)
+                     draw_pendulum, draw_scene, draw_trail)
 from .maps import MapLevel, load_run, list_maps
 from basketball_sprites.hoop_spawnv1 import HoopSprite
 
@@ -196,19 +196,12 @@ class Game:
     # ------------------------------------------------------------------- draw
     def draw(self):
         screen = self.screen
-        draw_background(screen, self.W, self.H, self.time, self.court_y_frac)
-
-        # the physics-system apparatus + the hoop on its driven node
-        draw_apparatus(screen, self.hoop_rig, self.px,
-                       ball_attached=False, driven_is_hoop=True)
-        draw_hoop(screen, self.hoop, self.hoop_sprite, self.px, self.court_y_frac, self.H)
-
-        # the pendulum launcher (left)
-        draw_pendulum(screen, self.pend, self.px, self.ball.attached, self.court_y_frac, self.H)
+        draw_scene(screen, self.hoop_rig, self.hoop, self.pend, self.ball,
+                   self.ball_img, self.hoop_sprite, self.px, self.W, self.H,
+                   self.time, self.court_y_frac)
 
         if not self.ball.attached:
             draw_trail(screen, self.trail)
-        draw_ball(screen, self.ball, self.ball_img, self.px, self.court_y_frac, self.H)
 
         # score / miss flashes
         if self.im_green:

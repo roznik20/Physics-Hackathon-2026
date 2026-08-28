@@ -9,11 +9,15 @@ from typing import List, Optional
 
 import pygame
 
-from .config import C, MAP_DIR, PX_PER_M
+from .config import C, MAP_DIR, PX_PER_M, MOTION_T_MAX
 from .maps import MapLevel, list_maps, load_run, save_run, validate
 from .ui import Button, _panel
-from .engine import builtin_run
-from physics.apparatus import SYSTEMS
+from .engine import builtin_run, PEND_L, PEND_A, PEND_PHI
+from .bodies import Ball, HoopRig, Pendulum, choose_hoop_base
+from .motion import Motion
+from .render import draw_scene
+from physics.apparatus import SYSTEMS, run as run_system, system_by_id
+from basketball_sprites.hoop_spawnv1 import HoopSprite
 
 
 def _label_font(screen, size=18, bold=False):
@@ -211,48 +215,120 @@ class MapEditor:
         self.back = Button(pygame.Rect(self.W - 120, self.H - 60, 100, 40), "Back", self.font,
                           bg=(96, 100, 112), hover=(116, 120, 132))
 
+        # ---- WYSIWYG live preview (rendered exactly as the game will show it) ----
+        self.px = PX_PER_M
+        self.preview = pygame.Surface((self.W - self.panel_w, self.H))
+        self.preview_scale = 1.0
+        self._prev = None          # last config hash the preview was built for
+        self._prev_t = 0.0
+        self._hoop_sprite = HoopSprite(image_path="assets/hoopnobgd.png", tolerance=60,
+                                       rim_anchor_px=(94, 183), crop_bottom_px=248)
+        self._ball_img = pygame.image.load("assets/ball.png").convert_alpha()
+        self._hoop_rig = None
+        self._hoop = None
+        self._pend = None
+        self._ball = None
+        self._build_preview()
+
+    def _cfg_key(self):
+        c = self.cfg
+        return (c.system, round(c.launcher[0], 3), round(c.launcher[1], 3),
+                round(c.hoop[0], 3), round(c.hoop[1], 3), round(c.amp_m, 3),
+                round(c.gravity, 2), round(c.ball_radius_m, 3))
+
+    def _build_preview(self):
+        """Build the live preview objects from the current config, mirroring the
+        engine's `_build_level` exactly (so the preview matches the game)."""
+        cfg = self.cfg
+        spec = system_by_id(cfg.system)
+        mr = run_system(spec, t_max=MOTION_T_MAX, fps=60)
+        motion = Motion(mr, cfg.amp_m, self.W, self.H,
+                        launcher_frac=cfg.launcher, hoop_frac=cfg.hoop)
+        hoop_root = choose_hoop_base(motion, self.W, self.H, cfg.hoop)
+        self._hoop_rig = HoopRig(motion, hoop_root)
+        self._hoop = self._hoop_rig.hoop
+        pivot = (cfg.launcher[0] * self.W / self.px, cfg.launcher[1] * self.H / self.px)
+        self._pend = Pendulum(pivot, PEND_L, PEND_A, cfg.gravity, PEND_PHI)
+        self._ball = Ball(radius_m=cfg.ball_radius_m)
+        self._ball.attach_to(self._pend)
+        self._prev = self._cfg_key()
+
+    def tick(self, dt: float):
+        """Advance the preview so the apparatus + pendulum animate in place."""
+        self._prev_t += dt
+        if self._pend and self._ball:
+            self._pend.step(dt)
+            self._ball.attach_to(self._pend)
+        if self._hoop_rig:
+            self._hoop_rig.step()
+            self._hoop_rig.update_hoop()
+        if self._cfg_key() != self._prev:
+            self._build_preview()
+
     def _system_index(self):
         ids = [s.id for s in SYSTEMS]
         return ids.index(self.cfg.system) if self.cfg.system in ids else 0
 
-    def _frac_to_scene(self, fx, fy):
+    def _preview_rect(self):
+        """Where the scaled live preview sits in the editor (letterboxed)."""
         ox = self.panel_w
-        return (int(ox + fx * (self.W - ox)), int(fy * self.H))
+        sc = (self.W - ox) / max(1, self.W)
+        pw = self.W - ox
+        ph = int(self.H * sc)
+        top = (self.H - ph) // 2
+        return ox, top, pw, ph, sc
+
+    def _frac_to_scene(self, fx, fy):
+        """Window fraction -> editor scene pixel (matches where the game draws it)."""
+        ox, top, pw, ph, sc = self._preview_rect()
+        return (int(ox + fx * pw), int(top + fy * ph))
 
     def _scene_to_frac(self, px, py):
-        ox = self.panel_w
-        return (px - ox) / max(1, (self.W - ox)), py / max(1, self.H)
+        """Editor scene pixel -> window fraction (inverse of _frac_to_scene)."""
+        ox, top, pw, ph, sc = self._preview_rect()
+        return (px - ox) / max(1, pw), (py - top) / max(1, ph)
 
     def _slider_value(self, rect, v, lo, hi):
         t = (v - lo) / (hi - lo)
         return int(rect.left + t * rect.w)
 
+    def _render_preview(self):
+        """Draw the live game scene at full window resolution, then scale it down
+        into the preview area. Returns the blit origin (ox, top)."""
+        ox, top, pw, ph, sc = self._preview_rect()
+        full = pygame.Surface((self.W, self.H))
+        d = max(6, int(self.cfg.ball_radius_m * self.px * 2))
+        ball_img = pygame.transform.smoothscale(self._ball_img, (d, d))
+        draw_scene(full, self._hoop_rig, self._hoop, self._pend, self._ball,
+                   ball_img, self._hoop_sprite, self.px, self.W, self.H,
+                   self._prev_t, 0.78)
+        self.preview = pygame.transform.scale(full, (pw, ph))
+        return ox, top
+
     def draw(self):
         s = self.screen
         s.fill(C["sky_top"])
-        # scene area
         ox = self.panel_w
-        pygame.draw.rect(s, C["court"], (ox, 0, self.W - ox, self.H))
-        # faint grid so positions are easy to read
-        for gx in range(ox, self.W, 48):
-            pygame.draw.line(s, (233, 214, 192), (gx, 0), (gx, self.H), 1)
-        for gy in range(0, self.H, 48):
-            pygame.draw.line(s, (233, 214, 192), (ox, gy), (self.W, gy), 1)
-        pygame.draw.line(s, C["court_line"], (ox, 0), (ox, self.H), 2)
-        hint = self.font.render("drag LAUNCHER / HOOP to place them", True, (150, 132, 112))
+
+        # WYSIWYG live preview of the game scene (scaled into the right area)
+        if self._hoop_rig is not None:
+            ox, top = self._render_preview()
+            s.blit(self.preview, (ox, top))
+            pygame.draw.rect(s, C["court_line"], (ox, top, self.W - ox, self.H), 2)
+        else:
+            pygame.draw.rect(s, C["court"], (ox, 0, self.W - ox, self.H))
+        hint = self.font.render("live preview — drag LAUNCHER / HOOP", True, (150, 132, 112))
         s.blit(hint, (ox + 10, 8))
 
-        # launcher + hoop markers
+        # placement markers on top of the live preview
         lp = self._frac_to_scene(*self.cfg.launcher)
         hp = self._frac_to_scene(*self.cfg.hoop)
-        pygame.draw.circle(s, C["accent"], lp, 16, 3)
-        pygame.draw.circle(s, C["accent"], lp, 5)
-        pygame.draw.rect(s, C["ok"], pygame.Rect(hp[0] - 20, hp[1] - 20, 40, 40), 3)
-        pygame.draw.line(s, C["ok"], (hp[0], hp[1]), (hp[0], hp[1] + 60), 4)
+        pygame.draw.circle(s, C["accent"], lp, 14, 3)
         lt = self.font.render("LAUNCHER", True, C["ink"])
-        s.blit(lt, (lp[0] - lt.get_width() // 2, lp[1] - 40))
+        s.blit(lt, (lp[0] - lt.get_width() // 2, lp[1] - 34))
+        pygame.draw.rect(s, C["ok"], pygame.Rect(hp[0] - 16, hp[1] - 16, 32, 32), 3)
         ht = self.font.render("HOOP", True, C["ink"])
-        s.blit(ht, (hp[0] - ht.get_width() // 2, hp[1] - 44))
+        s.blit(ht, (hp[0] - ht.get_width() // 2, hp[1] - 34))
 
         # control panel
         _panel(s, pygame.Rect(0, 0, self.panel_w, self.H), alpha=245)
@@ -307,7 +383,7 @@ class MapEditor:
                 return ("TEST", [self.cfg])
             if self.back.clicked(event.pos):
                 return "MENU"
-            # drag targets in scene
+            # drag targets in the scene (window-frac, matching the game)
             if in_scene:
                 lp = self._frac_to_scene(*self.cfg.launcher)
                 hp = self._frac_to_scene(*self.cfg.hoop)

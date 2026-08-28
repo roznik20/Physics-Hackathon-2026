@@ -117,6 +117,7 @@ def main():
             gallery.draw()
         elif state == "NEWMAP":
             assert editor is not None
+            editor.tick(clock.tick(FPS) / 1000.0)   # advance the live preview
             editor.draw()
         elif state == "GAME":
             assert game is not None

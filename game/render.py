@@ -266,3 +266,20 @@ def draw_pendulum(screen, pend, px_per_m: float = PX_PER_M,
     if not ball_attached:
         # ghost release point
         pygame.draw.circle(screen, C["accent"], bob, 9, 2)
+
+
+def draw_scene(screen, hoop_rig, hoop, pend, ball, ball_img, hoop_sprite,
+               px, W, H, time=0.0, court_y_frac=0.78):
+    """Render the full game scene (everything the game draws except the HUD,
+    the score/miss flashes and the flight trail) into ``screen``. Shared by the
+    engine and the map editor's WYSIWYG preview so the preview is exactly what
+    the game will show.
+    """
+    draw_background(screen, W, H, time, court_y_frac)
+    # the physics-system apparatus + the hoop on its driven node
+    draw_apparatus(screen, hoop_rig, px, ball_attached=False, driven_is_hoop=True)
+    draw_hoop(screen, hoop, hoop_sprite, px, court_y_frac, H)
+    # the pendulum launcher (left)
+    draw_pendulum(screen, pend, px, ball.attached, court_y_frac, H)
+    # the ball (attached or in flight)
+    draw_ball(screen, ball, ball_img, px, court_y_frac, H)
