@@ -70,7 +70,8 @@ class Game:
 
         self.ball_img = self._ball_image(BALL_RADIUS_M)
         self.hoop_sprite = HoopSprite(image_path="assets/hoopnobgd.png", tolerance=60,
-                                      rim_anchor_px=(94, 183))
+                                      rim_anchor_px=(94, 183),
+                                      crop_bottom_px=248)
         self.court_y_frac = 0.78
 
         self.score = 0

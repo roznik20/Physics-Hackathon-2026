@@ -17,12 +17,19 @@ def build_hoop_surface(
     *,
     tolerance: int = 60,
     crop_right_half: bool = True,
+    crop_bottom_px: int | None = None,
 ) -> pygame.Surface:
     """
     Build the cropped + recolored hoop surface ONCE.
 
     IMPORTANT: image_path is resolved relative to THIS FILE, so it works no matter
     what your working directory is.
+
+    ``crop_bottom_px`` (optional): clip the surface to this height (from the top),
+    dropping everything below. The source art includes a long support pole below
+    the net; when the hoop rides a *moving* apparatus that pole dangles to the
+    ground and reads as a fixed goal, so we cut it off and keep backboard + rim +
+    net only. The rim anchor (94, 183) sits above the cut, so it stays valid.
     """
     base_dir = Path(__file__).resolve().parent
     p = Path(image_path)
@@ -65,6 +72,11 @@ def build_hoop_surface(
                     break
     surf.unlock()
 
+    # Optional: drop the long pole below the net (see docstring).
+    if crop_bottom_px is not None:
+        new_h = min(crop_bottom_px, surf.get_height())
+        surf = surf.subsurface(pygame.Rect(0, 0, surf.get_width(), new_h))
+
     return surf
 
 
@@ -83,8 +95,10 @@ class HoopSprite:
         image_path: str = "assets/hoopnobgd.png",
         tolerance: int = 60,
         rim_anchor_px: tuple[int, int] | None = None,
+        crop_bottom_px: int | None = None,
     ):
-        self.surface = build_hoop_surface(image_path, tolerance=tolerance)
+        self.surface = build_hoop_surface(image_path, tolerance=tolerance,
+                                          crop_bottom_px=crop_bottom_px)
 
         if rim_anchor_px is None:
             rim_anchor_px = (self.surface.get_width() // 2, self.surface.get_height() // 2)
