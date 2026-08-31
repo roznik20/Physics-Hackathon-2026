@@ -1,0 +1,4 @@
+pygame>=2.1
+numpy>=1.23
+scipy>=1.8
+Pillow>=9.0   # used by the hoop-sprite calibration helper

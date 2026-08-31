@@ -1,60 +1,47 @@
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use("TkAgg")
+"""Double pendulum (the chaotic one).
+
+Standard two-link equations, theta measured from the downward vertical for each
+link. The second bob hangs from the first bob.
+
+Returned coordinates are y-UP, pivot at the origin:
+    x1 = L1 sin(theta1),  y1 = -L1 cos(theta1)
+    x2 = x1 + L2 sin(theta2),  y2 = y1 - L2 cos(theta2)
+"""
 import numpy as np
 from scipy.integrate import solve_ivp
-from matplotlib.animation import FuncAnimation
 
-def simulate_pendulum(m1 = 2, m2 = 1, r1 = 1.2, r2= 1, t_max= 600, theta1_0 = 1, omega1_0 = -2, theta2_0 = -2, omega2_0 = 10, fps = 60, g = 9.81):
-    def f(t, y):
+
+def simulate(m1=2.0, m2=1.0, L1=1.2, L2=1.0,
+             theta1_0=1.0, omega1_0=-2.0, theta2_0=-2.0, omega2_0=1.0,
+             g=9.81, t_max=60.0, fps=60):
+    def f(_t, y):
         t1, w1, t2, w2 = y
         delta = t2 - t1
-
-        denom1 = (m1 + m2) * r1 - m2 * r1 * np.cos(delta) ** 2
+        denom1 = (m1 + m2) * L1 - m2 * L1 * np.cos(delta) ** 2
         theta1_tt = (
-            m2 * r1 * w1 ** 2 * np.sin(delta) * np.cos(delta)
+            m2 * L1 * w1 ** 2 * np.sin(delta) * np.cos(delta)
             + m2 * g * np.sin(t2) * np.cos(delta)
-            + m2 * r2 * w2 ** 2 * np.sin(delta)
+            + m2 * L2 * w2 ** 2 * np.sin(delta)
             - (m1 + m2) * g * np.sin(t1)
         ) / denom1
-
-        denom2 = (r2 / r1) * denom1
+        denom2 = (L2 / L1) * denom1
         theta2_tt = (
-            -m2 * r2 * w2 ** 2 * np.sin(delta) * np.cos(delta)
+            -m2 * L2 * w2 ** 2 * np.sin(delta) * np.cos(delta)
             + (m1 + m2)
-            * (
-                g * np.sin(t1) * np.cos(delta)
-                - r1 * w1 ** 2 * np.sin(delta)
-                - g * np.sin(t2)
-            )
+            * (g * np.sin(t1) * np.cos(delta)
+               - L1 * w1 ** 2 * np.sin(delta)
+               - g * np.sin(t2))
         ) / denom2
-
         return [w1, theta1_tt, w2, theta2_tt]
-    t_eval = np.linspace(0.0, t_max, int(t_max * fps))
-    y0 = [theta1_0, omega1_0, theta2_0, omega2_0]
-    sol = solve_ivp(f, (0, t_max), y0, t_eval=t_eval)
-    theta1 = sol.y[0]
-    theta2 = sol.y[2]
-    
-    x1 = r1 * np.sin(theta1)
-    y1 = -r1 * np.cos(theta1)
-    x2 = x1 + r2 * np.sin(theta2)
-    y2 = y1 - r2 * np.cos(theta2)
-    
+
+    n = int(t_max * fps)
+    t_eval = np.linspace(0.0, t_max, n)
+    sol = solve_ivp(f, (0.0, t_max),
+                    [theta1_0, omega1_0, theta2_0, omega2_0], t_eval=t_eval,
+                    rtol=1e-8, atol=1e-10)
+    theta1, theta2 = sol.y[0], sol.y[2]
+    x1 = L1 * np.sin(theta1)
+    y1 = -L1 * np.cos(theta1)
+    x2 = x1 + L2 * np.sin(theta2)
+    y2 = y1 - L2 * np.cos(theta2)
     return t_eval, x1, y1, x2, y2
-
-t_eval, x1, y1, x2, y2 = simulate_pendulum()
-
-fig, ax = plt.subplots()
-ax.set_aspect("equal", adjustable="box")
-ax.set_xlim(-2, 2)
-ax.set_ylim(-3, 1)
-
-line, = ax.plot([], [], "o-", lw=2, color="tab:blue")
-
-def update(i):
-    line.set_data([0, x1[i], x2[i]], [0, y1[i], y2[i]])
-    return line,
-
-ani = FuncAnimation(fig, update, frames=len(t_eval), interval=1000 / 60, blit=True)
-plt.show()

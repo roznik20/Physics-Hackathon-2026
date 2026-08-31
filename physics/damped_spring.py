@@ -1,52 +1,30 @@
-import math
-from scipy.integrate import solve_ivp
-import numpy as np
-from matplotlib.animation import FuncAnimation
-# --- Numerical solution and coordinates ---
-import matplotlib.pyplot as plt
-from sympy import fps
+"""Driven, damped 1D spring-mass.
 
-def simulate_pendulum(b = 0.1, omega=3 ,d=0.3, m= 2, x0=-1, x_dis = -0.2, v_ini = 0, k=8, t_max=100.0, fps=60):
+A wall oscillates sinusoidally (the driver); a spring connects it to a mass.
+The mass obeys a driven-damped oscillator about the moving wall:
+    x_eq(t) = x0 + d sin(omega t)          (wall / equilibrium position)
+    x'' = -(b/m) x' - (k/m)(x - x_eq(t))
+Returned: (t, x_mass, x_wall) where x_wall = x_eq (the moving wall position).
+"""
+import math
+
+import numpy as np
+from scipy.integrate import solve_ivp
+
+
+def simulate(b=0.1, omega=3.0, d=0.3, m=2.0,
+             x0=-1.0, x_dis=-0.2, v_ini=0.0, k=8.0,
+             t_max=60.0, fps=60):
     def f(t, y):
         x, v = y
-        
         x_eq = x0 + d * math.sin(omega * t)
-        a = -(b/m) * v - (k/m) * (x - x_eq)
-        dxdt = v
-        dvdt = a
-        return [dxdt, dvdt]
-    t_eval = np.linspace(0.0, t_max, int(t_max * fps))
-    x_ini = x_dis + x0
-    sol = solve_ivp(f, (0.0, t_max), [x_ini, v_ini], t_eval=t_eval)
-    
+        a = -(b / m) * v - (k / m) * (x - x_eq)
+        return [v, a]
+
+    n = int(t_max * fps)
+    t_eval = np.linspace(0.0, t_max, n)
+    sol = solve_ivp(f, (0.0, t_max), [x0 + x_dis, v_ini], t_eval=t_eval,
+                    rtol=1e-8, atol=1e-10)
     x = sol.y[0]
-    x_wall = d * np.sin(omega * t_eval)
+    x_wall = x0 + d * np.sin(omega * t_eval)
     return t_eval, x, x_wall
-
-
-
-
-t, x, x_wall = simulate_pendulum()
-fig, ax = plt.subplots()
-ax.set_xlim(-2.0, 2.0)
-ax.set_ylim(-0.2, 0.2)
-ax.set_aspect("equal", "box")
-ax.grid(True)
-
-mass_line, = ax.plot([], [], "o-", lw=2)
-wall_line, = ax.plot([], [], "-", lw=2)
-
-def init():
-    mass_line.set_data([], [])
-    wall_line.set_data([], [])
-    return (mass_line, wall_line)
-
-def update(i):
-    xs = [x_wall[i], x[i]]
-    ys = [0.0, 0.0]
-    mass_line.set_data(xs, ys)
-    wall_line.set_data([x_wall[i], x_wall[i]], [-0.2, 0.2])
-    return (mass_line, wall_line)
-
-ani = FuncAnimation(fig, update, frames=len(t), init_func=init, blit=True, interval=1000 / 60)
-plt.show()

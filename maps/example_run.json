@@ -1,0 +1,8 @@
+{
+  "name": "example_run",
+  "levels": [
+    { "name": "warmup",  "system": "simple_pendulum",     "launcher": [0.22, 0.46], "hoop": [0.66, 0.42], "amp_m": 0.55, "ball_radius_m": 0.12, "gravity": 9.81 },
+    { "name": "elastic", "system": "spring_pendulum",     "launcher": [0.22, 0.46], "hoop": [0.68, 0.42], "amp_m": 0.80, "ball_radius_m": 0.12, "gravity": 9.81 },
+    { "name": "chaos",   "system": "double_pendulum",     "launcher": [0.20, 0.48], "hoop": [0.72, 0.40], "amp_m": 1.05, "ball_radius_m": 0.11, "gravity": 9.81 }
+  ]
+}
