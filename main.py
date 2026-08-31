@@ -12,14 +12,12 @@ Run with:  python main.py
 """
 from __future__ import annotations
 
-import os
 import sys
 
-from pathlib import Path
 
 import pygame
 
-from game.config import C, FPS, WINDOW_SCALE, MAP_DIR
+from game.config import FPS, WINDOW_SCALE, MAP_DIR
 from game.engine import Game, builtin_run
 from game.maps import load_run
 from game.menu import About, MapEditor, MapGallery, Menu

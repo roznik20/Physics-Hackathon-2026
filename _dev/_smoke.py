@@ -29,7 +29,7 @@ for lv in range(1, 4):
     game.draw(); draw_hud(screen, game, W, H)
     pygame.image.save(screen, f"_smoke/play_l{lv}.png")
     # release and let it fly a bit
-    game.ball.release_from(game.launcher)
+    game.ball.release_from(game.pend)
     for _ in range(120):
         game.update(1 / 60)
     print(f"  level {lv}: score={game.score} now-level={game.level} system={game.system_label!r}")
@@ -55,8 +55,9 @@ about.draw()
 pygame.image.save(screen, "_smoke/about.png")
 print("about ok")
 
-# round-trip a map
+# round-trip a map (clean up the fixture afterwards so re-runs don't dirty the tree)
 lvl = load_run("smoketest", MAP_DIR)[0]
 assert lvl.system == "double_pendulum", lvl.system
+(MAP_DIR / "smoketest.json").unlink()
 print("map round-trip ok:", lvl.name, lvl.system)
 print("ALL SMOKE OK")

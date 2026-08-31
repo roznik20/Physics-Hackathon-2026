@@ -22,7 +22,7 @@ for lvl in range(1, 11):
     for _ in range(60):
         game.update(1 / 60)
     game.update(1 / 60)
-    game.ball.release_from(game.launcher)
+    game.ball.release_from(game.pend)
     for _ in range(22):
         game.update(1 / 60)
     game.draw()

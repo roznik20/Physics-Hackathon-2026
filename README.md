@@ -62,8 +62,8 @@ See [`docs/physics.md`](docs/physics.md) for the derivation of each.
 | 6 | Double pendulum (chaotic) | `physics/double_pendulum.py` |
 | 7 | 2‑D springs (independent x & y) | `physics/springs_2d.py` |
 | 8 | Simple pendulum | `physics/simple_pendulum.py` |
-| 9 | Vertical 2‑mass spring stack | `physics/verticle_double_spring.py` |
-| 10 | Stationary (fixed hoop, no drive) | `physics/stationiary.py` |
+| 9 | Vertical 2‑mass spring stack | `physics/vertical_double_spring.py` |
+| 10 | Stationary (fixed hoop, no drive) | `physics/stationary.py` |
 
 The hoop's motion amplitude grows with level so later goals are harder to catch.
 
@@ -80,6 +80,17 @@ and set amplitude, gravity and ball size with the sliders. `Test` plays the leve
 The full schema is in [`docs/maps.md`](docs/maps.md).
 
 ---
+
+## Verify
+
+- `python main.py` — run the game.
+- Headless checks (useful on CI / over SSH, set `SDL_VIDEODRIVER=dummy`):
+  - `python _dev/_test_physics.py` — builds every `MotionResult` and checks
+    finiteness, node counts, and connector validity.
+  - `python _dev/_autopilot.py` — drives the real `Game` through all 10 levels
+    by timing the release; prints how many release attempts each level took.
+  - `python _dev/_smoke.py` — menu → play → gallery → editor → about, saving
+    screenshots to `_smoke/`.
 
 ## Project layout
 
@@ -101,7 +112,8 @@ game/                    # the game layer (uses pygame)
 basketball_sprites/      # original hoop sprite + art helpers (kept)
 assets/                  # images (hoop, ball, bliss, lebron, green_fn, moonshot)
 maps/                    # your saved runs (JSON)
-legacy/                  # the original 1,372‑line main.py, kept for reference
+legacy/                  # the original 1,372-line main.py, kept for reference
+_dev/                    # dev diagnostics + the headless tests above
 docs/                    # physics derivations, architecture, map format
 ```
 

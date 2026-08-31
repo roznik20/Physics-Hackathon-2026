@@ -12,7 +12,7 @@ So "the hoop is on a custom pendulum/system, not the ball."
 from __future__ import annotations
 
 import math
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 

@@ -10,7 +10,6 @@ engine hooks.
 """
 from __future__ import annotations
 
-import math
 from typing import Dict, Optional
 
 import numpy as np
@@ -22,7 +21,6 @@ _muted = False
 
 
 def _envelope(n: int, attack: float = 0.01, release: float = 0.06) -> np.ndarray:
-    t = np.linspace(0.0, 1.0, n)
     env = np.ones(n)
     a = max(1, int(attack * n))
     r = max(1, int(release * n))

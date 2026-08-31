@@ -18,7 +18,7 @@ import numpy as np
 from physics.common import MotionResult
 
 from .config import (AMP_PER_LEVEL_M, BASE_LAUNCHER_AMP_M, HOOP_FRAC,
-                     LAUNCHER_FRAC, MAX_LAUNCHER_AMP_M, MOTION_T_MAX, PX_PER_M)
+                     LAUNCHER_FRAC, MAX_LAUNCHER_AMP_M, PX_PER_M)
 
 
 class Motion:

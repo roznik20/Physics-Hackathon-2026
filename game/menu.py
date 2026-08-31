@@ -10,9 +10,9 @@ from typing import List, Optional
 import pygame
 
 from .config import C, MAP_DIR, PX_PER_M, MOTION_T_MAX
-from .maps import MapLevel, list_maps, load_run, save_run, validate
+from .maps import MapLevel, list_maps, save_run, validate
 from .ui import Button, _panel
-from .engine import builtin_run, PEND_L, PEND_A, PEND_PHI
+from .engine import PEND_L, PEND_A, PEND_PHI
 from .bodies import Ball, HoopRig, Pendulum, choose_hoop_base
 from .motion import Motion
 from .render import draw_scene

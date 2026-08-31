@@ -136,7 +136,7 @@ Rigid rod, point mass, full (non‑small‑angle) dynamics:
 Default `L=3, θ0=1, ω0=2`. Returns `(t, x, y)` with `x = L sinθ, y = -L cosθ`.
 Drawn as a hatched ceiling pivot + rod + bob (the bob carries the **hoop**).
 
-## 9 · Vertical 2‑mass spring stack — `verticle_double_spring.py`
+## 9 · Vertical 2‑mass spring stack — `vertical_double_spring.py`
 
 `floor – s1 – m1 – s2 – m2 – s3 – ceiling`, a vertical 2‑DOF spring chain.
 Positions `x1, x2` measured upward from the floor (`total_length = L1+L2+L3`):
@@ -156,7 +156,7 @@ L1=0.7, L2=0.6, L3=0.4`. Returns `(t, x1, x2, total_length)`. The **lower** mass
 `m1` is the driven node and carries the **hoop**. Rendered as
 ceiling → spring → mass → spring → mass → floor, all on screen.
 
-## 10 · Stationary — `stationiary.py`
+## 10 · Stationary — `stationary.py`
 
 No drive: `(t, x, y)` both constant. The hoop is a plain fixed goal and the ball
 starts at rest — a "just aim with your release velocity" baseline (useful for

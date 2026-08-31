@@ -14,9 +14,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
-from physics.apparatus import SYSTEMS, system_by_id
+from physics.apparatus import SYSTEMS
 
 
 @dataclass
