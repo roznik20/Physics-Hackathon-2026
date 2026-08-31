@@ -28,9 +28,9 @@ from basketball_sprites.hoop_spawnv1 import HoopSprite
 # Pendulum launcher geometry (the thing the player times). The pivot is hung
 # from the UPPER-LEFT so the bob swings high and, on release, the ball arcs
 # DOWN toward the hoop on the right (a proper basketball shot, not a flat throw).
-PEND_PIVOT_FRAC = (0.20, 0.16)   # fraction of the window (upper-left)
+PEND_PIVOT_FRAC = (0.20, 0.10)   # fraction of the window (upper-left)
 PEND_L = 1.35                    # m (rod length)
-PEND_A = 0.90                    # swing amplitude (rad)
+PEND_A = 1.00                    # swing amplitude (rad)
 PEND_PHI = 0.3                   # phase
 
 
@@ -51,7 +51,13 @@ class Game:
         self.W = W
         self.H = H
         self.screen = screen
-        self.px = PX_PER_M
+        # Scale PX_PER_M with the window so the world stays the same size in
+        # meters.  The ball's throw is a fixed number of meters (pendulum rod
+        # is fixed length), so a bigger world in meters = further hoop =
+        # unwinnable.  Capping the world size keeps every level winnable on
+        # any screen.
+        from .config import DESIGN_WORLD_W_M, DESIGN_WORLD_H_M
+        self.px = max(PX_PER_M, W / DESIGN_WORLD_W_M, H / DESIGN_WORLD_H_M)
         self.run = run if run else builtin_run()
         self.run_name = run_name
 
@@ -100,7 +106,8 @@ class Game:
         spec = system_by_id(cfg.system)
         mr = run_system(spec, t_max=MOTION_T_MAX, fps=60)
         self.motion = Motion(mr, cfg.amp_m, self.W, self.H,
-                             launcher_frac=cfg.launcher, hoop_frac=cfg.hoop)
+                             launcher_frac=cfg.launcher, hoop_frac=cfg.hoop,
+                             px=self.px)
         self.system_label = spec.label
         self.system_short = spec.short
         self.gravity = cfg.gravity
@@ -108,7 +115,8 @@ class Game:
         self.ball_img = self._ball_image(cfg.ball_radius_m)
 
         # hoop rides the physics system, on the right
-        hoop_root = choose_hoop_base(self.motion, self.W, self.H, cfg.hoop)
+        hoop_root = choose_hoop_base(self.motion, self.W, self.H, cfg.hoop,
+                                     px=self.px)
         self.hoop_rig = HoopRig(self.motion, hoop_root)
         self.hoop = self.hoop_rig.hoop
 
@@ -149,6 +157,11 @@ class Game:
                     self._build_level()
                     break
 
+                # rim collision (the ball clanks off the rim instead of passing
+                # straight through)
+                if self.hoop.collide(self.ball):
+                    self.on_rim_hit()
+
                 # miss flash (once per throw)
                 ww, wh = self.W / self.px, self.H / self.px
                 if (not self._miss_triggered and
@@ -157,6 +170,7 @@ class Game:
                     self.im_moonshot = True
                     self.flash_start_moonshot = pygame.time.get_ticks()
                     self._miss_triggered = True
+                    self.on_miss()
 
                 # hard out-of-bounds -> re-attach
                 ww, wh = self.W / self.px, self.H / self.px
@@ -178,7 +192,16 @@ class Game:
             self.trail.clear()
 
     def on_score(self):
-        pass  # hook for sound
+        from .sound import play
+        play("score")
+
+    def on_rim_hit(self):
+        from .sound import play
+        play("rim")
+
+    def on_miss(self):
+        from .sound import play
+        play("miss")
 
     # ------------------------------------------------------------------ input
     def handle(self, event) -> Optional[str]:

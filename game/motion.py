@@ -24,7 +24,8 @@ from .config import (AMP_PER_LEVEL_M, BASE_LAUNCHER_AMP_M, HOOP_FRAC,
 class Motion:
     def __init__(self, mr: MotionResult, target_amp: float,
                  W: int, H: int, launcher_frac: Tuple[float, float] = LAUNCHER_FRAC,
-                 hoop_frac: Tuple[float, float] = HOOP_FRAC):
+                 hoop_frac: Tuple[float, float] = HOOP_FRAC,
+                 px: float = PX_PER_M):
         self.mr = mr
         self.t = mr.t
         self.n = len(mr.t)
@@ -51,9 +52,9 @@ class Motion:
         # vertical is the same placeable height that choose_hoop_base uses
         # (window minus its top/bottom margins), so the apparatus is scaled to
         # fit exactly where it will actually be centered.
-        margin = 24.0 / PX_PER_M
-        avail_w = (hoop_frac[0] - 0.07) * (W / PX_PER_M) - margin * 2
-        avail_h = (H - 150) / PX_PER_M   # matches choose_hoop_base margins
+        margin = 24.0 / px
+        avail_w = (hoop_frac[0] - 0.07) * (W / px) - margin * 2
+        avail_h = (H - 150) / px   # matches choose_hoop_base margins
         scale_fit_w = avail_w / max(hspread, 1e-6)
         scale_fit_h = avail_h / max(vspread, 1e-6)
 

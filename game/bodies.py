@@ -106,6 +106,30 @@ class Hoop:
         return (dx * dx + dy * dy) <= (self.rim_radius * self.rim_radius) \
             and abs(dy) <= self.band
 
+    def collide(self, ball: Ball, restitution: float = 0.5) -> bool:
+        """Simple rim collision: the rim is a horizontal opening whose two ends
+        (the rim wire) are circular obstacles. If the ball overlaps an end, push
+        it out along the normal and reflect the velocity (with restitution) so
+        the ball clanks off the rim instead of passing straight through. Returns
+        True if a collision happened (so the engine can play a sound)."""
+        wire = 0.03  # rim-wire radius (m)
+        hit = False
+        for side in (-1.0, 1.0):
+            edge = np.array([self.c[0] + side * self.rim_radius, self.c[1]])
+            d = ball.pos - edge
+            dist = float(np.hypot(d[0], d[1]))
+            min_d = ball.r + wire
+            if 0.0 < dist < min_d:
+                n = d / dist
+                # push the ball out of the rim wire
+                ball.pos = edge + n * min_d
+                # reflect the velocity about the normal
+                vn = float(np.dot(ball.vel, n))
+                if vn < 0:
+                    ball.vel = ball.vel - (1 + restitution) * vn * n
+                hit = True
+        return hit
+
 
 class HoopRig:
     """The hoop driven by a physics-system motion.
@@ -141,7 +165,8 @@ class HoopRig:
 
 
 def choose_hoop_base(motion: Motion, W: int, H: int,
-                     hoop_frac: Tuple[float, float]) -> Tuple[float, float]:
+                     hoop_frac: Tuple[float, float],
+                     px: float = PX_PER_M) -> Tuple[float, float]:
     """Choose the hoop's base center (world meters, y-down) so the *entire*
     apparatus envelope (every node, not just the driven one) stays on screen.
     Starts at ``hoop_frac`` of the window, then clamps by the full min/max
@@ -149,7 +174,6 @@ def choose_hoop_base(motion: Motion, W: int, H: int,
     but generalized to the whole apparatus (so tall stacks like the vertical
     double-spring keep their ceiling and floor visible).
     """
-    px = PX_PER_M
     # full apparatus envelope in offset space (relative to the driven-node mean)
     min_x, min_y, max_x, max_y = motion.envelope()
 

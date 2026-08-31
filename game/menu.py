@@ -216,11 +216,14 @@ class MapEditor:
                           bg=(96, 100, 112), hover=(116, 120, 132))
 
         # ---- WYSIWYG live preview (rendered exactly as the game will show it) ----
-        self.px = PX_PER_M
         self.preview = pygame.Surface((self.W - self.panel_w, self.H))
         self.preview_scale = 1.0
         self._prev = None          # last config hash the preview was built for
         self._prev_t = 0.0
+        self._prev_rebuild = 0.0
+        # use the same window-scaled px as the engine so the preview matches
+        from .config import DESIGN_WORLD_W_M, DESIGN_WORLD_H_M
+        self.px = max(PX_PER_M, W / DESIGN_WORLD_W_M, H / DESIGN_WORLD_H_M)
         self._hoop_sprite = HoopSprite(image_path="assets/hoopnobgd.png", tolerance=60,
                                        rim_anchor_px=(94, 183), crop_bottom_px=248)
         self._ball_img = pygame.image.load("assets/ball.png").convert_alpha()
@@ -243,8 +246,9 @@ class MapEditor:
         spec = system_by_id(cfg.system)
         mr = run_system(spec, t_max=MOTION_T_MAX, fps=60)
         motion = Motion(mr, cfg.amp_m, self.W, self.H,
-                        launcher_frac=cfg.launcher, hoop_frac=cfg.hoop)
-        hoop_root = choose_hoop_base(motion, self.W, self.H, cfg.hoop)
+                        launcher_frac=cfg.launcher, hoop_frac=cfg.hoop,
+                        px=self.px)
+        hoop_root = choose_hoop_base(motion, self.W, self.H, cfg.hoop, px=self.px)
         self._hoop_rig = HoopRig(motion, hoop_root)
         self._hoop = self._hoop_rig.hoop
         pivot = (cfg.launcher[0] * self.W / self.px, cfg.launcher[1] * self.H / self.px)
@@ -262,8 +266,14 @@ class MapEditor:
         if self._hoop_rig:
             self._hoop_rig.step()
             self._hoop_rig.update_hoop()
-        if self._cfg_key() != self._prev:
+        # The preview rebuild is a full scipy integration (~0.1 s), so rebuild
+        # at most a few times a second — only when the config has changed since
+        # the last rebuild. Without this, dragging a marker re-integrates every
+        # frame and the editor freezes.
+        now = self._prev_t
+        if self._cfg_key() != self._prev and now - self._prev_rebuild > 0.18:
             self._build_preview()
+            self._prev_rebuild = now
 
     def _system_index(self):
         ids = [s.id for s in SYSTEMS]

@@ -13,6 +13,13 @@ DT = 1.0 / FPS
 
 PX_PER_M = 220.0          # meters -> pixels
 
+# Design-world dimensions (meters) — the game is laid out for a world this size.
+# On larger windows, PX_PER_M is scaled up so the world stays the same size in
+# meters (the ball's throw is in meters, so a bigger world = further hoop =
+# unwinnable).  See Game.__init__ for the dynamic computation.
+DESIGN_WORLD_W_M = 921.0 / PX_PER_M   # 4.19 m
+DESIGN_WORLD_H_M = 691.0 / PX_PER_M   # 3.14 m
+
 G = 9.81
 
 # Window sizing
@@ -34,8 +41,8 @@ MAX_LAUNCHER_AMP_M = 1.30
 # of the screen. The pendulum hangs upper-left; the hoop is on the right, at the
 # height the ball's descending arc passes through it (verified reachable on all
 # 10 systems). The hoop's motion (driven node) is clamped on-screen around this.
-LAUNCHER_FRAC = (0.20, 0.16)
-HOOP_FRAC = (0.60, 0.66)
+LAUNCHER_FRAC = (0.20, 0.10)
+HOOP_FRAC = (0.55, 0.60)
 HOOP_POLE_HEIGHT_M = 2.4   # pole length below the rim (meters)
 
 # Motion precompute window (seconds) per level

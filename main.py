@@ -38,6 +38,11 @@ def window_size():
 
 def main():
     pygame.init()
+    # audio: mono 16-bit (matches the synthesized cues in game.sound)
+    try:
+        pygame.mixer.init(22050, -16, 1)
+    except pygame.error:
+        pass
     pygame.display.set_caption("Physics Hoop")
     W, H = window_size()
     screen = pygame.display.set_mode((W, H))

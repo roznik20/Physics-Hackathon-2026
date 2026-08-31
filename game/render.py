@@ -43,17 +43,22 @@ def _line(surf, color, a, b, width=2):
         pygame.draw.line(surf, color, a, b, width)
 
 
-def _spring(surf, color, p1, p2, width=3, coils=12, amp=8):
+def _spring(surf, color, p1, p2, width=3, amp=8):
     x1, y1 = p1
     x2, y2 = p2
     dx, dy = x2 - x1, y2 - y1
     dist = math.hypot(dx, dy)
-    if dist < 2:
+    if dist < 4:
         _line(surf, color, p1, p2, width)
         return
     ux, uy = dx / dist, dy / dist
     nx, ny = -uy, ux
-    end_pad = 0.12 * dist
+    # Physical spring: constant coil density (coils ∝ length) and coil width
+    # shrinks when compressed (a real helical spring gets narrower, not
+    # self-intersecting, when squeezed).
+    coils = max(3, int(dist / 14))
+    amp_actual = amp * max(0.35, min(1.0, dist / 100.0))
+    end_pad = 0.10 * dist
     start, end = end_pad, dist - end_pad
     pts = [(x1, y1)]
     if end <= start:
@@ -62,7 +67,8 @@ def _spring(surf, color, p1, p2, width=3, coils=12, amp=8):
         for i in range(1, coils + 1):
             t = start + (end - start) * (i / (coils + 1))
             sgn = -1 if (i % 2 == 0) else 1
-            pts.append((x1 + ux * t + nx * amp * sgn, y1 + uy * t + ny * amp * sgn))
+            pts.append((x1 + ux * t + nx * amp_actual * sgn,
+                        y1 + uy * t + ny * amp_actual * sgn))
         pts.append((x2, y2))
     pygame.draw.lines(surf, color, False, [(int(a), int(b)) for a, b in pts], width)
 

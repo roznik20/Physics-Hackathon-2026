@@ -1,0 +1,20 @@
+{
+  "name": "testmap",
+  "levels": [
+    {
+      "name": "testmap",
+      "system": "stationary",
+      "launcher": [
+        0.2,
+        0.1
+      ],
+      "hoop": [
+        0.55,
+        0.6
+      ],
+      "amp_m": 1.7964912280701755,
+      "ball_radius_m": 0.12,
+      "gravity": 9.81
+    }
+  ]
+}

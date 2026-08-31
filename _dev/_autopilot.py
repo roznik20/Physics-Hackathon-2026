@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 import pygame
 pygame.init()
-W, H = 921, 691
+W, H = 1440, 900   # LARGE window — the size where levels used to be unwinnable
 screen = pygame.display.set_mode((W, H))
 from game.engine import Game, builtin_run
 
