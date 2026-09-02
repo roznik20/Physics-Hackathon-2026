@@ -84,9 +84,19 @@ where the hoop will be*. Every one of the ten systems is used (none reduced to
    `_draw_node`.
 4. It appears in the menu ladder and the map editor automatically.
 
-Verify with `python _dev/_test_physics.py` (builds every `MotionResult` and
-checks finiteness, node counts, and connector validity) and
-`python _dev/_autopilot.py` (clears all 10 levels by timing the release).
+## Verification
+
+The three headless checks below are the project's test suite (they use
+`SDL_VIDEODRIVER=dummy`, so no display is needed):
+
+- `python _dev/_test_physics.py` — builds every `MotionResult` and checks
+  finiteness, node counts, and connector validity.
+- `python _dev/_autopilot.py` — drives the real `Game` through all 10 levels by
+  timing the release; prints how many release attempts each level took.
+- `python _dev/_smoke.py` — menu → play → gallery → editor → about, saving
+  screenshots to `_smoke/`.
+
+Run them after changing any of `physics/`, `game/`, or `main.py`.
 
 ## Files I changed vs. the original hackathon
 

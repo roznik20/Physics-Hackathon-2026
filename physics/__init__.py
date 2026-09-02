@@ -15,6 +15,6 @@ from . import (  # noqa: F401
     horizontal_three_pend,
     damped_spring,
     springs_2d,
-    stationiary,
-    verticle_double_spring,
+    stationary,
+    vertical_double_spring,
 )

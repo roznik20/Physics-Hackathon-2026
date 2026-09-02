@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, List
 
 import numpy as np
 
-from .common import MotionResult, const_point
+from .common import MotionResult
 
 
 # ============================================================================
@@ -100,7 +100,7 @@ def build_spring_pendulum(out) -> MotionResult:
 def build_pendulum_cart(out) -> MotionResult:
     t, x_pend, y_pend, x_cart, _y_cart = out
     n = len(t)
-    mx, my = _mean(x_pend), _mean(y_pend)
+    my = _mean(y_pend)
     # cart node (moving support on the rail); the pendulum BOB is the driven launcher
     cart = np.column_stack([x_cart, np.full(n, my)])
     bob = np.column_stack([x_pend, y_pend])
@@ -144,7 +144,7 @@ def build_horizontal_spring(out) -> MotionResult:
 def build_horizontal_three_pend(out) -> MotionResult:
     t, x1, x2, x3, _x_wall = out
     n = len(t)
-    m1, m2, m3 = _mean(x1), _mean(x2), _mean(x3)
+    m1 = _mean(x1)
     # wall to the left of m1 by the mean m1->wall spacing
     off = max(0.3, m1 - 0.0 + 0.3)
     wall = _fixed_at(m1, -off, n)
@@ -209,7 +209,6 @@ def build_2d_springs(out) -> MotionResult:
 
 def build_stationary(out) -> MotionResult:
     t, x, y = out
-    n = len(t)
     return MotionResult(
         name="stationary", label="Stationary (fixed)", short="Static",
         t=t,
@@ -289,10 +288,10 @@ SYSTEMS: List[System] = [
            "simple_pendulum", "simulate", build_simple_pendulum,
            {"L": 1.3, "theta0": 0.9, "omega0": 2.0}),
     System("vertical_double_spring", "Vertical 2-mass springs", "V. springs",
-           "verticle_double_spring", "simulate", build_vertical_double_spring,
+           "vertical_double_spring", "simulate", build_vertical_double_spring,
            {"x10": 1.0, "x20": 1.7, "v10": 1.0, "v20": -1.0}),
     System("stationary", "Stationary (fixed)", "Static",
-           "stationiary", "simulate", build_stationary, {}),
+           "stationary", "simulate", build_stationary, {}),
 ]
 
 

@@ -11,18 +11,15 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-import numpy as np
 import pygame
 
 from physics.apparatus import SYSTEMS, run as run_system, system_by_id
 
 from .bodies import Ball, HoopRig, Pendulum, choose_hoop_base
-from .config import (G, HOOP_FRAC, MOTION_T_MAX, PX_PER_M, C, BALL_RADIUS_M,
-                     MAP_DIR)
+from .config import (HOOP_FRAC, MOTION_T_MAX, PX_PER_M, BALL_RADIUS_M)
 from .motion import Motion, launcher_amp_for_level
-from .render import (draw_apparatus, draw_background, draw_ball, draw_hoop,
-                     draw_pendulum, draw_scene, draw_trail)
-from .maps import MapLevel, load_run, list_maps
+from .render import (draw_scene, draw_trail)
+from .maps import MapLevel
 from basketball_sprites.hoop_spawnv1 import HoopSprite
 
 # Pendulum launcher geometry (the thing the player times). The pivot is hung

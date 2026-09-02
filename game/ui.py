@@ -4,7 +4,6 @@ Kept separate from the engine so the simulation stays testable headless.
 """
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
 
 import pygame
 

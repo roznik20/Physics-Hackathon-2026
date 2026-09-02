@@ -83,7 +83,7 @@ window size.
 
 `simple_pendulum`, `double_pendulum`, `spring_pendulum`, `pendulum_cart`,
 `horizontal_spring`, `horizontal_three_pend`, `damped_spring`, `springs_2d`,
-`verticle_double_spring`, `stationiary`.
+`vertical_double_spring`, `stationary`.
 
 ## Tips for interesting levels
 
@@ -94,7 +94,7 @@ window size.
 - Place the **hoop low and far right** with a high‑amplitude chaotic system (e.g.
   the double pendulum) for a hard mode; place it **near the launcher** for an
   easy warm‑up.
-- A run of mixed systems is a mini‑campaign; `stationiary` is a fixed‑hoop
+- A run of mixed systems is a mini‑campaign; `stationary` is a fixed‑hoop
   baseline (the hoop doesn't move, so you rely purely on the release).
 
 ## Programmatic API
